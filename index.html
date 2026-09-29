@@ -360,7 +360,8 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div class="field"><label>Désignation *</label><input id="catalogName" required></div>
     <div class="field"><label>Type</label><input id="catalogType" placeholder="Produit / prestation"></div>
     <div class="field"><label>Description</label><textarea id="catalogDescription"></textarea></div>
-    <div class="field"><label>Prix HT</label><input id="catalogPrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
+    <div class="field"><label>Type de prix</label><select id="catalogPriceType" onchange="toggleCatalogPriceField()"><option value="unit">Prix HT</option><option value="monthly">Prix HT mensuel</option></select></div>
+    <div class="field"><label id="catalogPriceLabel">Prix HT</label><input id="catalogPrice" type="number" step="0.01" min="0" inputmode="decimal"></div>
   </form>
   <div class="modalfoot">
     <button class="btn secondary" type="button" onclick="closeCatalogModal()">Annuler</button>
@@ -2339,22 +2340,57 @@ function renderCatalog(){
  $('catalogAdminActions').style.display=can?'block':'none';
  $('catalogAccessHint').textContent=can?'Vous pouvez modifier le contenu du catalogue.':'Consultation uniquement.';
  if(!rows.length){host.innerHTML='<div class="empty">Aucun élément dans le catalogue.'+(can?'<br><br><button class="btn primary" onclick="openCatalogModal()">Ajouter le premier élément</button>':'')+'</div>';return}
- host.innerHTML='<table class="table"><thead><tr><th>Référence</th><th>Désignation</th><th>Type</th><th>Description</th><th>Prix HT</th>'+(can?'<th></th>':'')+'</tr></thead><tbody>'+rows.map(x=>`<tr><td>${esc(x.ref||'—')}</td><td><b>${esc(x.name||'—')}</b></td><td>${esc(x.type||'—')}</td><td>${esc(x.description||'—')}</td><td>${x.price!=null&&x.price!==''?fmtMoney(Number(x.price)):'—'}</td>${can?`<td><button class="btn secondary" onclick="openCatalogModal('${x.id}')">Modifier</button> <button class="btn danger" onclick="deleteCatalogItem('${x.id}')">Supprimer</button></td>`:''}</tr>`).join('')+'</tbody></table>';
+ host.innerHTML='<table class="table"><thead><tr><th>Référence</th><th>Désignation</th><th>Type</th><th>Description</th><th>Prix HT</th><th>Prix HT mensuel</th>'+(can?'<th></th>':'')+'</tr></thead><tbody>'+rows.map(x=>`<tr><td>${esc(x.ref||'—')}</td><td><b>${esc(x.name||'—')}</b></td><td>${esc(x.type||'—')}</td><td>${esc(x.description||'—')}</td><td>${x.price!=null&&x.price!==''&&x.priceType!=='monthly'?fmtMoney(Number(x.price)):'—'}</td><td>${x.monthlyPrice!=null&&x.monthlyPrice!==''&&x.priceType==='monthly'?fmtMoney(Number(x.monthlyPrice)):'—'}</td>${can?`<td><button class="btn secondary" onclick="openCatalogModal('${x.id}')">Modifier</button> <button class="btn danger" onclick="deleteCatalogItem('${x.id}')">Supprimer</button></td>`:''}</tr>`).join('')+'</tbody></table>';
+}
+function toggleCatalogPriceField(){
+ const type=$('catalogPriceType')?.value||'unit';
+ const label=$('catalogPriceLabel');
+ if(label)label.textContent=type==='monthly'?'Prix HT mensuel':'Prix HT';
+ const input=$('catalogPrice');
+ if(input)input.placeholder=type==='monthly'?'0,00 / mois':'0,00';
 }
 function openCatalogModal(id=null){
  if(!collaboratorCanManage()){alert('Accès réservé à Rémi, Hugo et Morgane.');return;}
  $('catalogEditId').value=id||'';$('catalogModalTitle').textContent=id?'Modifier l’élément':'Ajouter au catalogue';
- if(id){const x=catalogue.find(x=>x.id===id);$('catalogRef').value=x?.ref||'';$('catalogName').value=x?.name||'';$('catalogType').value=x?.type||'';$('catalogDescription').value=x?.description||'';$('catalogPrice').value=x?.price??''}
- else{$('catalogForm').reset()}
+ if(id){
+   const x=catalogue.find(x=>x.id===id);
+   $('catalogRef').value=x?.ref||'';
+   $('catalogName').value=x?.name||'';
+   $('catalogType').value=x?.type||'';
+   $('catalogDescription').value=x?.description||'';
+   const type=x?.priceType==='monthly'?'monthly':'unit';
+   $('catalogPriceType').value=type;
+   $('catalogPrice').value=type==='monthly'?(x?.monthlyPrice??''):(x?.price??'');
+ }else{
+   $('catalogForm').reset();
+   $('catalogPriceType').value='unit';
+   $('catalogPrice').value='';
+ }
+ toggleCatalogPriceField();
  $('catalogModal').classList.add('open');setTimeout(()=>$('catalogName')?.focus(),0)
 }
 function closeCatalogModal(){$('catalogModal').classList.remove('open')}
 function saveCatalogItem(e){
  e.preventDefault();if(!collaboratorCanManage()){alert('Accès réservé à Rémi, Hugo et Morgane.');return;}
  const id=$('catalogEditId').value, name=$('catalogName').value.trim();if(!name){alert('La désignation est obligatoire.');return;}
+ const priceType=$('catalogPriceType').value||'unit';
+ const raw=$('catalogPrice').value;
  let item=id?catalogue.find(x=>x.id===id):{id:uid()};
- Object.assign(item,{ref:$('catalogRef').value.trim(),name,type:$('catalogType').value.trim(),description:$('catalogDescription').value.trim(),price:$('catalogPrice').value===''?null:Number($('catalogPrice').value)});
- if(!id)catalogue.push(item);saveCatalogue();closeCatalogModal();renderCatalog();
+ if(!item)return;
+ item.ref=$('catalogRef').value.trim();
+ item.name=name;
+ item.type=$('catalogType').value.trim();
+ item.description=$('catalogDescription').value.trim();
+ item.priceType=priceType;
+ if(priceType==='monthly'){
+   item.monthlyPrice=raw===''?null:Number(raw);
+   if(item.priceType==='monthly' && item.price==null)item.price=null;
+ }else{
+   item.price=raw===''?null:Number(raw);
+   item.monthlyPrice=null;
+ }
+ if(!id)catalogue.push(item);
+ saveCatalogue();closeCatalogModal();renderCatalog();
 }
 function deleteCatalogItem(id){if(!collaboratorCanManage()){alert('Accès réservé à Rémi, Hugo et Morgane.');return;}const x=catalogue.find(x=>x.id===id);if(!x)return;if(confirm(`Supprimer « ${x.name||''} » du catalogue ?`)){catalogue=catalogue.filter(x=>x.id!==id);saveCatalogue();renderCatalog()}}
 function showUsefulContacts(){
