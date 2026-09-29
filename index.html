@@ -733,6 +733,81 @@ const $=id=>document.getElementById(id);
 const AUTH_SESSION_KEY='oreka_session_collaborator_v1';
 const RESET_TOKENS_KEY='oreka_reset_tokens_v1';
 let pendingResetCollaboratorId='';
+
+/* OREKA — données partagées Supabase */
+const OREKA_SUPABASE_URL='https://ldowtpkyfdjhywdplguc.supabase.co';
+const OREKA_SUPABASE_KEY='sb_publishable_3AGHjSn7zjCgptO59kBCCg_ZLDgTJ0I';
+const OREKA_SHARED_ROW='all';
+const OREKA_SHARED_TYPES={clients:'clients',prospects:'prospects',agenda:'agenda',quotes:'quotes',catalogue:'catalogue',usefulContacts:'useful_contacts',collaborateurs:'collaborateurs'};
+let orekaSharedReady=false, orekaSharedCache={}, orekaSharedPending={};
+function orekaSharedClone(v){try{return JSON.parse(JSON.stringify(v));}catch(e){return v;}}
+function orekaSharedHeaders(extra={}){return Object.assign({'apikey':OREKA_SUPABASE_KEY,'Content-Type':'application/json'},extra);}
+function orekaSharedSanitize(type,item){const out=orekaSharedClone(item)||{};if(type===OREKA_SHARED_TYPES.collaborateurs)delete out.password;return out;}
+function orekaSharedSanitizeArray(type,arr){return (Array.isArray(arr)?arr:[]).map(x=>orekaSharedSanitize(type,x)).filter(x=>x&&x.id!=null);}
+async function orekaSharedFetch(type){
+ const url=OREKA_SUPABASE_URL+'/rest/v1/oreka_records?select=data&entity_type=eq.'+encodeURIComponent(type)+'&record_id=eq.'+encodeURIComponent(OREKA_SHARED_ROW)+'&limit=1';
+ const r=await fetch(url,{headers:orekaSharedHeaders(),cache:'no-store'});
+ if(!r.ok)throw new Error('Supabase GET '+r.status);
+ const rows=await r.json();
+ if(!Array.isArray(rows)||!rows.length)return {exists:false,data:[]};
+ return {exists:true,data:Array.isArray(rows[0]?.data)?rows[0].data:[]};
+}
+async function orekaSharedPut(type,arr){
+ const url=OREKA_SUPABASE_URL+'/rest/v1/oreka_records?on_conflict=entity_type,record_id';
+ const body=[{entity_type:type,record_id:OREKA_SHARED_ROW,data:orekaSharedSanitizeArray(type,arr),updated_at:new Date().toISOString()}];
+ const r=await fetch(url,{method:'POST',headers:orekaSharedHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),body:JSON.stringify(body)});
+ if(!r.ok)throw new Error('Supabase PUT '+r.status);
+}
+function orekaSharedSame(a,b){try{return JSON.stringify(a)===JSON.stringify(b);}catch(e){return a===b;}}
+function orekaSharedMap(arr){const m=new Map();(Array.isArray(arr)?arr:[]).forEach(x=>{if(x&&x.id!=null)m.set(String(x.id),x)});return m;}
+function orekaSharedMergeCollaborators(local,server){
+ const byKey=new Map();
+ [...(Array.isArray(server)?server:[]),...(Array.isArray(local)?local:[])].forEach(src=>{
+  if(!src)return;
+  const key=String(src.mail||src.email||src.id||'').trim().toLowerCase();if(!key)return;
+  const merged=Object.assign({},byKey.get(key)||{},src);
+  const localOne=(Array.isArray(local)?local:[]).find(x=>String(x?.mail||'').trim().toLowerCase()===key);
+  merged.password=localOne?.password||'1234';byKey.set(key,merged);
+ });
+ return [...byKey.values()];
+}
+async function orekaSharedLoadAll(){
+ const bindings=[[OREKA_SHARED_TYPES.clients,()=>data,v=>{data=v}],[OREKA_SHARED_TYPES.prospects,()=>prospects,v=>{prospects=v}],[OREKA_SHARED_TYPES.agenda,()=>agendaEvents,v=>{agendaEvents=v}],[OREKA_SHARED_TYPES.quotes,()=>quotes,v=>{quotes=v}],[OREKA_SHARED_TYPES.catalogue,()=>catalogue,v=>{catalogue=v}],[OREKA_SHARED_TYPES.usefulContacts,()=>usefulContacts,v=>{usefulContacts=v}],[OREKA_SHARED_TYPES.collaborateurs,()=>collaborateurs,v=>{collaborateurs=v}]];
+ for(const [type,getter,setter] of bindings){
+  try{
+   const local=orekaSharedClone(getter())||[];const remote=await orekaSharedFetch(type);
+   if(!remote.exists){await orekaSharedPut(type,local);orekaSharedCache[type]=orekaSharedSanitizeArray(type,local);}
+   else{
+    let merged=remote.data;if(type===OREKA_SHARED_TYPES.collaborateurs)merged=orekaSharedMergeCollaborators(local,remote.data);
+    setter(merged);orekaSharedCache[type]=orekaSharedSanitizeArray(type,merged);
+    if(type===OREKA_SHARED_TYPES.clients)localStorage.setItem(KEY,JSON.stringify(data));
+    else if(type===OREKA_SHARED_TYPES.prospects)localStorage.setItem('oreka_prospects_v1',JSON.stringify(prospects));
+    else if(type===OREKA_SHARED_TYPES.agenda)localStorage.setItem('oreka_agenda_v1',JSON.stringify(agendaEvents));
+    else if(type===OREKA_SHARED_TYPES.quotes)localStorage.setItem('oreka_quotes_v1',JSON.stringify(quotes));
+    else if(type===OREKA_SHARED_TYPES.catalogue)localStorage.setItem('oreka_catalogue_v1',JSON.stringify(catalogue));
+    else if(type===OREKA_SHARED_TYPES.usefulContacts)localStorage.setItem('oreka_contacts_utiles_v1',JSON.stringify(usefulContacts));
+    else if(type===OREKA_SHARED_TYPES.collaborateurs)localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));
+   }
+  }catch(err){console.warn('OREKA synchronisation chargement',type,err);}
+ }
+}
+async function orekaSharedSave(type,arr){
+ const clean=orekaSharedSanitizeArray(type,orekaSharedClone(arr)||[]);
+ if(!orekaSharedReady){orekaSharedPending[type]=clean;return;}
+ try{
+  const base=orekaSharedMap(orekaSharedCache[type]||[]),local=orekaSharedMap(clean),remoteResult=await orekaSharedFetch(type),remote=orekaSharedMap(remoteResult.data||[]);
+  for(const [id,item] of local){const old=base.get(id);if(!old||!orekaSharedSame(old,item))remote.set(id,item);}
+  for(const [id] of base)if(!local.has(id))remote.delete(id);
+  const merged=[...remote.values()];await orekaSharedPut(type,merged);orekaSharedCache[type]=orekaSharedClone(merged);
+ }catch(err){console.warn('OREKA synchronisation sauvegarde',type,err);}
+}
+async function initOrekaSharedSync(){
+ await orekaSharedLoadAll();collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));
+ orekaSharedReady=true;const pending=orekaSharedPending;orekaSharedPending={};for(const [type,arr] of Object.entries(pending))await orekaSharedSave(type,arr);
+ updateAuthControls();renderClients();if(typeof renderUsefulContacts==='function')renderUsefulContacts();if(typeof renderCatalog==='function')renderCatalog();if(typeof renderProspects==='function')renderProspects();if(typeof renderQuotes==='function')renderQuotes();if(typeof renderAgenda==='function')renderAgenda();
+}
+window.addEventListener('online',()=>{if(!orekaSharedReady)initOrekaSharedSync().catch(e=>console.warn(e));});
+
 function authSessionCollaborator(){
  const id=sessionStorage.getItem(AUTH_SESSION_KEY)||'';
  return collaborateurs.find(c=>c.id===id)||null;
@@ -864,7 +939,7 @@ function initAuth(){
  handleResetRoute();
  window.addEventListener('hashchange',handleResetRoute);
 }
-function save(){localStorage.setItem(KEY,JSON.stringify(data))}
+function save(){localStorage.setItem(KEY,JSON.stringify(data));void orekaSharedSave(OREKA_SHARED_TYPES.clients,data)}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
 function fmtMoney(v){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(Number(v)||0)}
 function fmtDate(v){if(!v)return '—';return new Intl.DateTimeFormat('fr-FR').format(new Date(v+'T00:00:00'))}
@@ -903,9 +978,9 @@ function renderClients(){
  rows.map(c=>`<tr><td onclick="openClient('${c.id}')" style="cursor:pointer"><b>${esc(c.name)}</b><div class="label">${esc(c.ref||'')}</div></td><td>${esc(c.commercial||'—')}</td><td>${fmtMoney(c.rent)}</td><td>${fmtDate(c.start)}</td><td>${fmtDate(calcEnd(c.start,c.duration))}</td><td><span class="badge ${c.unpaid?'alert':'ok'}">${c.unpaid?'Oui':'Non'}</span></td><td><button class="btn secondary" onclick="event.stopPropagation();openClient('${c.id}')">Ouvrir</button> <button type="button" class="btn danger delete-client-btn" onclick="event.preventDefault();event.stopPropagation();requestClientDelete('${c.id}')">Supprimer</button></td></tr>`).join('')+'</tbody></table>';
 }
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function saveProspects(){localStorage.setItem('oreka_prospects_v1',JSON.stringify(prospects))}
-function saveAgenda(){localStorage.setItem('oreka_agenda_v1',JSON.stringify(agendaEvents))}
-function saveQuotes(){localStorage.setItem('oreka_quotes_v1',JSON.stringify(quotes))}
+function saveProspects(){localStorage.setItem('oreka_prospects_v1',JSON.stringify(prospects));void orekaSharedSave(OREKA_SHARED_TYPES.prospects,prospects)}
+function saveAgenda(){localStorage.setItem('oreka_agenda_v1',JSON.stringify(agendaEvents));void orekaSharedSave(OREKA_SHARED_TYPES.agenda,agendaEvents)}
+function saveQuotes(){localStorage.setItem('oreka_quotes_v1',JSON.stringify(quotes));void orekaSharedSave(OREKA_SHARED_TYPES.quotes,quotes)}
 
 const ACTIVE_COLLAB_KEY='oreka_active_collaborateur_v1';
 let activeCollaboratorId=localStorage.getItem(ACTIVE_COLLAB_KEY)||'';
@@ -2245,8 +2320,8 @@ function deleteProspect(id){return requestProspectDelete(id)}
 document.addEventListener('input',function(e){if(e.target.matches('#qtplLines .qtpl-line-qty, #qtplLines .qtpl-line-price, #qtplLines .qtpl-line-discount, #qtplLines .qtpl-line-discount-reason, #qtplGlobalDiscount, #qtplGlobalDiscountReason')) updateQuoteTemplateTotals();});
 let quoteSirenLookupTimer=null; refreshCollaboratorSelects();
 document.addEventListener('input',function(e){if(e.target.id==='qtplSiren'){clearTimeout(quoteSirenLookupTimer); const v=e.target.value.replace(/\D/g,''); e.target.value=v; if(v.length===9){quoteSirenLookupTimer=setTimeout(()=>lookupQuoteSiren(),350);}}});
-function saveCatalogue(){localStorage.setItem('oreka_catalogue_v1',JSON.stringify(catalogue))}
-function saveUsefulContacts(){localStorage.setItem('oreka_contacts_utiles_v1',JSON.stringify(usefulContacts))}
+function saveCatalogue(){localStorage.setItem('oreka_catalogue_v1',JSON.stringify(catalogue));void orekaSharedSave(OREKA_SHARED_TYPES.catalogue,catalogue)}
+function saveUsefulContacts(){localStorage.setItem('oreka_contacts_utiles_v1',JSON.stringify(usefulContacts));void orekaSharedSave(OREKA_SHARED_TYPES.usefulContacts,usefulContacts)}
 function showCatalog(){
  if(!requireActiveCollaborator("le catalogue"))return;
  ['listView','prospectView','agendaView','statisticsView','quotesView','collaborateursView','usefulContactsView'].forEach(id=>{const el=$(id);if(el)el.style.display='none'});
@@ -2320,7 +2395,7 @@ function showCollaborateurs(){
  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));$('navCollaborateurs').classList.add('active');
  renderCollaborateurs();
 }
-function saveCollaborateurs(){collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs))}
+function saveCollaborateurs(){collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));void orekaSharedSave(OREKA_SHARED_TYPES.collaborateurs,collaborateurs)}
 function openCollaborateurModal(id=null){
  $('collaborateurEditId').value=id||'';
  $('collaborateurModalTitle').textContent=id?'Modifier le collaborateur':'Nouveau collaborateur';
@@ -2522,6 +2597,7 @@ function deleteMaterial(id){let c=data.find(x=>x.id===currentId);c.materials=(c.
 function saveCommercial(){let c=data.find(x=>x.id===currentId);c.commercial=$('commercialText').value;save();alert('Commentaire commercial enregistré.')}
 initAuth();
 renderClients();
+void initOrekaSharedSync();
 </script>
 
 <script>
