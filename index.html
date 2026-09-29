@@ -499,13 +499,22 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div class="field full"><label>Adresse</label><input id="qtplAddress" placeholder="Adresse du client / prospect"></div>
     <div class="field full"><label>Objet du devis</label><input id="qtplSubject" placeholder="Objet du devis"></div>
     <div class="field full"><label>Prestations / matériel</label>
+      <div id="qtplCatalogNotice" class="label" style="margin:4px 0 8px">Sélectionnez un produit du catalogue pour reprendre automatiquement sa désignation et son prix. Le prix reste toujours modifiable. Utilisez « Article libre » pour saisir un article qui n’est pas au catalogue.</div>
       <div style="overflow:auto;margin-top:6px">
-        <table class="table" style="margin:0;min-width:820px"><thead><tr><th style="width:31%">Désignation</th><th style="width:8%">Qté</th><th style="width:18%" id="qtplPriceHeader">Prix unitaire HT</th><th style="width:18%">Remise</th><th style="width:25%" id="qtplTotalHeader">Total HT</th></tr></thead>
-        <tbody id="qtplLines">
-          <tr><td><input class="qtpl-line-desc" placeholder="Désignation"></td><td><input class="qtpl-line-qty" type="text" inputmode="decimal" value="1" placeholder="1" oninput="updateQuoteTemplateTotals()"></td><td><input class="qtpl-line-price" type="text" inputmode="decimal" placeholder="0,00" oninput="updateQuoteTemplateTotals()"></td><td><div style="display:flex;gap:5px;align-items:center"><select class="qtpl-line-discount-type" onchange="updateQuoteTemplateTotals()" style="width:58px"><option value="percent">%</option><option value="amount">€</option></select><input class="qtpl-line-discount" type="text" inputmode="decimal" placeholder="0" oninput="updateQuoteTemplateTotals()" style="min-width:70px;width:100%"></div><small class="label qtpl-line-discount-label">—</small><input class="qtpl-line-discount-reason" type="text" placeholder="Motif de remise" style="margin-top:5px;width:100%"></td><td><input class="qtpl-line-total" type="text" readonly></td></tr>
-          <tr><td><input class="qtpl-line-desc" placeholder="Désignation"></td><td><input class="qtpl-line-qty" type="text" inputmode="decimal" value="1" placeholder="1" oninput="updateQuoteTemplateTotals()"></td><td><input class="qtpl-line-price" type="text" inputmode="decimal" placeholder="0,00" oninput="updateQuoteTemplateTotals()"></td><td><div style="display:flex;gap:5px;align-items:center"><select class="qtpl-line-discount-type" onchange="updateQuoteTemplateTotals()" style="width:58px"><option value="percent">%</option><option value="amount">€</option></select><input class="qtpl-line-discount" type="text" inputmode="decimal" placeholder="0" oninput="updateQuoteTemplateTotals()" style="min-width:70px;width:100%"></div><small class="label qtpl-line-discount-label">—</small><input class="qtpl-line-discount-reason" type="text" placeholder="Motif de remise" style="margin-top:5px;width:100%"></td><td><input class="qtpl-line-total" type="text" readonly></td></tr>
-          <tr><td><input class="qtpl-line-desc" placeholder="Désignation"></td><td><input class="qtpl-line-qty" type="text" inputmode="decimal" value="1" placeholder="1" oninput="updateQuoteTemplateTotals()"></td><td><input class="qtpl-line-price" type="text" inputmode="decimal" placeholder="0,00" oninput="updateQuoteTemplateTotals()"></td><td><div style="display:flex;gap:5px;align-items:center"><select class="qtpl-line-discount-type" onchange="updateQuoteTemplateTotals()" style="width:58px"><option value="percent">%</option><option value="amount">€</option></select><input class="qtpl-line-discount" type="text" inputmode="decimal" placeholder="0" oninput="updateQuoteTemplateTotals()" style="min-width:70px;width:100%"></div><small class="label qtpl-line-discount-label">—</small><input class="qtpl-line-discount-reason" type="text" placeholder="Motif de remise" style="margin-top:5px;width:100%"></td><td><input class="qtpl-line-total" type="text" readonly></td></tr>
-        </tbody></table>
+        <table class="table" style="margin:0;min-width:1120px"><thead><tr>
+          <th style="width:24%">Catalogue</th>
+          <th style="width:25%">Désignation</th>
+          <th style="width:7%">Qté</th>
+          <th style="width:15%" id="qtplPriceHeader">Prix unitaire HT</th>
+          <th style="width:17%">Remise</th>
+          <th style="width:9%" id="qtplTotalHeader">Total HT</th>
+          <th style="width:3%"></th>
+        </tr></thead>
+        <tbody id="qtplLines"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+        <button type="button" class="btn secondary" onclick="addQuoteTemplateLine()">+ Article libre</button>
       </div>
       <div style="margin-top:10px;padding:10px;border:1px solid #d0d5dd;border-radius:10px;background:#f8fafc">
         <div class="label" style="margin-bottom:6px">Remise globale</div>
@@ -516,8 +525,7 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
           <span id="qtplGlobalDiscountSummary" class="label">Aucune remise globale</span>
         </div>
       </div>
-    </div>
-    <div class="field"><label>Conditions / validité</label><input id="qtplValidity" placeholder="Ex. Offre valable 30 jours"></div>
+    </div><div class="field"><label>Conditions / validité</label><input id="qtplValidity" placeholder="Ex. Offre valable 30 jours"></div>
     <div class="field"><label id="qtplGrandTotalLabel">Total HT</label><input id="qtplTotal" type="text" readonly></div>
     <div class="field full"><label>Notes</label><textarea id="qtplNotes" placeholder="Notes ou conditions particulières…"></textarea></div>
   </div>
@@ -1487,14 +1495,8 @@ function prepareQuoteTemplate(sourceProspect=null){
     const ed=$('qtplEngagementDuration'); if(ed)ed.value=sourceProspect.engagementDuration||'';
     if(st)st.textContent='Informations reprises depuis le prospect.';
   }
-  document.querySelectorAll('#qtplLines .qtpl-line-desc').forEach(el=>el.value='');
-  document.querySelectorAll('#qtplLines .qtpl-line-qty').forEach(el=>el.value='1');
-  document.querySelectorAll('#qtplLines .qtpl-line-price').forEach(el=>el.value='');
-  document.querySelectorAll('#qtplLines .qtpl-line-discount').forEach(el=>el.value='');
-  document.querySelectorAll('#qtplLines .qtpl-line-discount-type').forEach(el=>el.value='percent');
-  document.querySelectorAll('#qtplLines .qtpl-line-total').forEach(el=>el.value='');
-  document.querySelectorAll('#qtplLines .qtpl-line-discount-label').forEach(el=>el.textContent='—');
-  document.querySelectorAll('#qtplLines .qtpl-line-discount-reason').forEach(el=>el.value='');
+  const qtplBody=$('qtplLines');if(qtplBody)qtplBody.innerHTML='';
+  addQuoteTemplateLine();
   toggleQuoteSaleMode();
   updateQuoteTemplateTotals();
 }
@@ -1506,8 +1508,98 @@ function toggleQuoteSaleMode(){
   const totalHeader=$('qtplTotalHeader'); if(totalHeader)totalHeader.textContent=mode==='location'?'Total mensuel HT':'Total HT';
   const grand=$('qtplGrandTotalLabel'); if(grand)grand.textContent=mode==='location'?'Total mensuel HT':'Total HT';
   const hint=$('qtplSaleModeHint'); if(hint)hint.textContent=mode==='location'?'En location, les prix indiqués sont des prix mensuels. La durée d’engagement est en mois.':'En achat, les prix indiqués sont des prix unitaires HT.';
+  refreshQuoteCatalogSelects();
+  document.querySelectorAll('#qtplLines tr').forEach(row=>{
+    const id=row.querySelector('.qtpl-line-catalog')?.value||'';
+    if(!id)return;
+    const item=catalogue.find(x=>String(x.id)===String(id));
+    const p=quoteCatalogPrice(item,mode);
+    if(p!=='' && row.querySelector('.qtpl-line-price'))row.querySelector('.qtpl-line-price').value=formatQuoteNumber(p);
+  });
 }
 function quoteSaleModeLabel(mode){return mode==='location'?'Location':'Achat';}
+
+function quoteCatalogPrice(item,mode){
+  if(!item)return '';
+  if(mode==='location')return item.monthlyPrice!=null&&item.monthlyPrice!==''?item.monthlyPrice:(item.price!=null&&item.price!==''?item.price:'');
+  return item.price!=null&&item.price!==''?item.price:(item.monthlyPrice!=null&&item.monthlyPrice!==''?item.monthlyPrice:'');
+}
+function quoteCatalogOptions(selected=''){
+  const mode=$('qtplSaleMode')?.value||'achat';
+  const opts=['<option value="">Article libre</option>'];
+  [...catalogue].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'})).forEach(item=>{
+    const price=quoteCatalogPrice(item,mode);
+    const suffix=price!=='' ? (mode==='location'?' — '+fmtMoney(Number(price))+' / mois':' — '+fmtMoney(Number(price))) : ' — prix non renseigné';
+    opts.push('<option value="'+esc(item.id)+'"'+(String(item.id)===String(selected)?' selected':'')+'>'+esc(item.name||'Article')+esc(item.ref?' · '+item.ref:'')+suffix+'</option>');
+  });
+  return opts.join('');
+}
+function refreshQuoteCatalogSelects(){
+  document.querySelectorAll('#qtplLines .qtpl-line-catalog').forEach(sel=>{
+    const current=sel.value||sel.closest('tr')?.dataset.catalogId||'';
+    sel.innerHTML=quoteCatalogOptions(current);
+    if(current && [...sel.options].some(o=>o.value===String(current)))sel.value=String(current);
+  });
+}
+function quoteLineHtml(){
+  return '<tr>'+
+    '<td><select class="qtpl-line-catalog" onchange="selectQuoteCatalogLine(this)" style="width:100%"></select></td>'+
+    '<td><input class="qtpl-line-desc" placeholder="Désignation libre ou issue du catalogue"></td>'+
+    '<td><input class="qtpl-line-qty" type="text" inputmode="decimal" value="1" placeholder="1" oninput="updateQuoteTemplateTotals()"></td>'+
+    '<td><input class="qtpl-line-price" type="text" inputmode="decimal" placeholder="0,00" oninput="updateQuoteTemplateTotals()"></td>'+
+    '<td><div style="display:flex;gap:5px;align-items:center"><select class="qtpl-line-discount-type" onchange="updateQuoteTemplateTotals()" style="width:58px"><option value="percent">%</option><option value="amount">€</option></select><input class="qtpl-line-discount" type="text" inputmode="decimal" placeholder="0" oninput="updateQuoteTemplateTotals()" style="min-width:70px;width:100%"></div><small class="label qtpl-line-discount-label">—</small><input class="qtpl-line-discount-reason" type="text" placeholder="Motif de remise" style="margin-top:5px;width:100%"></td>'+
+    '<td><input class="qtpl-line-total" type="text" readonly></td>'+
+    '<td><button type="button" class="btn danger" title="Supprimer la ligne" onclick="removeQuoteTemplateLine(this)">×</button></td>'+
+  '</tr>';
+}
+function addQuoteTemplateLine(lineData=null){
+  const tbody=$('qtplLines');if(!tbody)return;
+  const tr=document.createElement('tr');tr.innerHTML=quoteLineHtml();tbody.appendChild(tr);
+  const line=lineData||{};
+  const catalog=tr.querySelector('.qtpl-line-catalog');
+  const selected=line.catalogId||'';
+  catalog.innerHTML=quoteCatalogOptions(selected);
+  if(selected && [...catalog.options].some(o=>o.value===String(selected))){catalog.value=String(selected);tr.dataset.catalogId=String(selected);}
+  tr.querySelector('.qtpl-line-desc').value=line.description||'';
+  tr.querySelector('.qtpl-line-qty').value=line.qty??1;
+  tr.querySelector('.qtpl-line-price').value=line.unitPrice??'';
+  tr.querySelector('.qtpl-line-discount-type').value=line.discountType||'percent';
+  tr.querySelector('.qtpl-line-discount').value=line.discountValue??'';
+  tr.querySelector('.qtpl-line-discount-reason').value=line.discountReason||'';
+  if(selected && !line.unitPrice){
+    selectQuoteCatalogLine(catalog);
+  }
+  updateQuoteTemplateTotals();
+}
+function removeQuoteTemplateLine(btn){
+  const row=btn?.closest('tr');if(!row)return;
+  const tbody=$('qtplLines');if(!tbody)return;
+  if(tbody.querySelectorAll('tr').length<=1){
+    row.querySelector('.qtpl-line-catalog').value='';
+    row.dataset.catalogId='';
+    row.querySelector('.qtpl-line-desc').value='';
+    row.querySelector('.qtpl-line-qty').value='1';
+    row.querySelector('.qtpl-line-price').value='';
+    row.querySelector('.qtpl-line-discount').value='';
+    row.querySelector('.qtpl-line-discount-type').value='percent';
+    row.querySelector('.qtpl-line-discount-reason').value='';
+  }else row.remove();
+  updateQuoteTemplateTotals();
+}
+function selectQuoteCatalogLine(select){
+  const row=select?.closest('tr');if(!row)return;
+  const id=String(select.value||'');
+  row.dataset.catalogId=id;
+  const item=catalogue.find(x=>String(x.id)===id);
+  const desc=row.querySelector('.qtpl-line-desc'),price=row.querySelector('.qtpl-line-price');
+  if(!item){return;}
+  if(desc && !String(desc.value||'').trim())desc.value=item.name||'';
+  else if(desc)desc.value=item.name||desc.value;
+  const p=quoteCatalogPrice(item,$('qtplSaleMode')?.value||'achat');
+  if(price && p!=='')price.value=formatQuoteNumber(p);
+  updateQuoteTemplateTotals();
+}
+
 function parseQuoteNumber(value){
   const s=String(value??'').replace(/\u00A0/g,' ').replace(/\s/g,'').replace(',', '.');
   const n=Number(s);
@@ -1568,7 +1660,7 @@ function getQuoteDraftFromForm(){
     const discountValue=parseQuoteNumber(row.querySelector('.qtpl-line-discount')?.value);
     const gross=Math.max(0,qty*unitPrice);
     const discountAmount=quoteDiscountAmount(gross,discountType,discountValue);
-    return {description:String(row.querySelector('.qtpl-line-desc')?.value||'').trim(),qty,unitPrice,discountType,discountValue,discountAmount,discountReason:String(row.querySelector('.qtpl-line-discount-reason')?.value||'').trim(),total:Math.max(0,gross-discountAmount)};
+    return {catalogId:String(row.querySelector('.qtpl-line-catalog')?.value||row.dataset.catalogId||''),description:String(row.querySelector('.qtpl-line-desc')?.value||'').trim(),qty,unitPrice,discountType,discountValue,discountAmount,discountReason:String(row.querySelector('.qtpl-line-discount-reason')?.value||'').trim(),total:Math.max(0,gross-discountAmount)};
   }).filter(x=>x.description || x.unitPrice || x.total || x.qty!==1 || x.discountValue);
   return {
     id:currentQuoteEditId||uid(),
@@ -1837,16 +1929,9 @@ qtplDate:q.date||'',qtplValidityDate:q.validityDate||addOneMonthClampedToIso(q.d
  const gdt=$('qtplGlobalDiscountType'); if(gdt)gdt.value=q.globalDiscountType||'percent';
  const gd=$('qtplGlobalDiscount'); if(gd)gd.value=q.globalDiscountValue??'';
  const gdr=$('qtplGlobalDiscountReason'); if(gdr)gdr.value=q.globalDiscountReason||'';
- const rows=[...document.querySelectorAll('#qtplLines tr')];
- rows.forEach((row,i)=>{
-   const line=q.lines?.[i];
-   row.querySelector('.qtpl-line-desc').value=line?.description||'';
-   row.querySelector('.qtpl-line-qty').value=line?.qty??1;
-   row.querySelector('.qtpl-line-price').value=(line?.unitPrice??'')===' ' ? '' : (line?.unitPrice??'');
-   const dt=row.querySelector('.qtpl-line-discount-type'); if(dt)dt.value=line?.discountType||'percent';
-   const dv=row.querySelector('.qtpl-line-discount'); if(dv)dv.value=line?.discountValue??'';
-   const dr=row.querySelector('.qtpl-line-discount-reason'); if(dr)dr.value=line?.discountReason||'';
- });
+ const qtplBody=$('qtplLines');if(qtplBody)qtplBody.innerHTML='';
+ const lines=q.lines&&q.lines.length?q.lines:[{description:'',qty:1,unitPrice:''}];
+ lines.forEach(line=>addQuoteTemplateLine(line));
  updateQuoteTemplateTotals();
  const pdfBtn=$('downloadQuotePdfBtn'); if(pdfBtn)pdfBtn.style.display='inline-block';
  const saveBtn=$('saveQuoteBtn'); if(saveBtn){saveBtn.textContent='Enregistrer les modifications';saveBtn.style.display='inline-block';}
