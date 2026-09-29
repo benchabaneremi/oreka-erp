@@ -975,7 +975,7 @@ function renderClients(){
  $('mInterventions').textContent=data.reduce((n,c)=>n+(c.interventions||[]).length,0);
  if(!rows.length){$('clientTable').innerHTML='<div class="empty">Aucun client pour le moment.<br><br><button class="btn primary" onclick="openClientModal()">Ajouter le premier client</button></div>';return}
  $('clientTable').innerHTML='<table class="table"><thead><tr><th>Client</th><th>Commercial</th><th>Loyer HT</th><th>Début</th><th>Fin</th><th>Impayés</th><th></th></tr></thead><tbody>'+
- rows.map(c=>`<tr><td onclick="openClient('${c.id}')" style="cursor:pointer"><b>${esc(c.name)}</b><div class="label">${esc(c.ref||'')}</div></td><td>${esc(c.commercial||'—')}</td><td>${fmtMoney(c.rent)}</td><td>${fmtDate(c.start)}</td><td>${fmtDate(calcEnd(c.start,c.duration))}</td><td><span class="badge ${c.unpaid?'alert':'ok'}">${c.unpaid?'Oui':'Non'}</span></td><td><button class="btn secondary" onclick="event.stopPropagation();openClient('${c.id}')">Ouvrir</button> ${collaboratorCanDeleteClientData()?'<button type="button" class="btn danger delete-client-btn" onclick="event.preventDefault();event.stopPropagation();requestClientDelete(\'${c.id}\')">Supprimer</button>':''}</td></tr>`).join('')+'</tbody></table>';
+ rows.map(c=>`<tr><td onclick="openClient('${c.id}')" style="cursor:pointer"><b>${esc(c.name)}</b><div class="label">${esc(c.ref||'')}</div></td><td>${esc(c.commercial||'—')}</td><td>${fmtMoney(c.rent)}</td><td>${fmtDate(c.start)}</td><td>${fmtDate(calcEnd(c.start,c.duration))}</td><td><span class="badge ${c.unpaid?'alert':'ok'}">${c.unpaid?'Oui':'Non'}</span></td><td><button class="btn secondary" onclick="event.stopPropagation();openClient('${c.id}')">Ouvrir</button> ${collaboratorCanDeleteClientData()?'<button type="button" class="btn danger delete-client-btn" onclick="event.preventDefault();event.stopPropagation();requestClientDelete('"+c.id+"')">Supprimer</button>':''}</td></tr>`).join('')+'</tbody></table>';
 }
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function saveProspects(){localStorage.setItem('oreka_prospects_v1',JSON.stringify(prospects));void orekaSharedSave(OREKA_SHARED_TYPES.prospects,prospects)}
@@ -2487,11 +2487,11 @@ function renderDetail(c){
  ${c.notes?`<div class="info" style="margin-top:16px"><div class="label">Notes</div><div class="comment">${esc(c.notes)}</div></div>`:''}`;
  let ints=[...(c.interventions||[])].sort((a,b)=>(b.date+b.start).localeCompare(a.date+a.start));
  $('tabTechnical').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b>Historique des interventions</b><div class="label">${ints.length} intervention(s)</div></div><button class="btn primary" onclick="openTechModal()">+ Nouvelle intervention</button></div>`+
- (ints.length?ints.map(i=>`<div class="intervention"><div><div class="date">${fmtDate(i.date)} · ${i.start||'--'}${i.end?' → '+i.end:''}${i.intervenant?` · ${esc(i.intervenant)}`:''}</div><div class="comment">${esc(i.comment)}</div></div>${collaboratorCanDeleteClientData()?'<button class="btn danger" onclick="deleteTech(\'${i.id}\')">Supprimer</button>':''}</div>`).join(''):'<div class="empty">Aucune intervention enregistrée.</div>');
+ (ints.length?ints.map(i=>`<div class="intervention"><div><div class="date">${fmtDate(i.date)} · ${i.start||'--'}${i.end?' → '+i.end:''}${i.intervenant?` · ${esc(i.intervenant)}`:''}</div><div class="comment">${esc(i.comment)}</div></div>${collaboratorCanDeleteClientData()?'<button class="btn danger" onclick="deleteTech('"+i.id+"')">Supprimer</button>':''}</div>`).join(''):'<div class="empty">Aucune intervention enregistrée.</div>');
  let mats=[...(c.materials||[])];
  $('tabMaterial').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b>Matériel installé chez le client</b><div class="label">${mats.length} équipement(s)</div></div><button class="btn primary" onclick="openMaterialModal()">+ Ajouter du matériel</button></div>`+
  (mats.length?`<div class="panel" style="box-shadow:none"><table class="table"><thead><tr><th>Matériel</th><th>Marque / modèle</th><th>N° de série</th><th>Installation</th><th>Qté</th><th></th></tr></thead><tbody>`+
- mats.map(m=>`<tr><td><b>${esc(m.type)}</b>${m.comment?`<div class="label">${esc(m.comment)}</div>`:''}</td><td>${esc(m.brand||'—')} / ${esc(m.model||'—')}</td><td>${esc(m.serial||'—')}</td><td>${fmtDate(m.date)}</td><td>${m.qty||1}</td><td>${collaboratorCanDeleteClientData()?'<button class="btn danger" onclick="deleteMaterial(\'${m.id}\')">Supprimer</button>':''}</td></tr>`).join('')+
+ mats.map(m=>`<tr><td><b>${esc(m.type)}</b>${m.comment?`<div class="label">${esc(m.comment)}</div>`:''}</td><td>${esc(m.brand||'—')} / ${esc(m.model||'—')}</td><td>${esc(m.serial||'—')}</td><td>${fmtDate(m.date)}</td><td>${m.qty||1}</td><td>${collaboratorCanDeleteClientData()?'<button class="btn danger" onclick="deleteMaterial('"+m.id+"')">Supprimer</button>':''}</td></tr>`).join('')+
  `</tbody></table></div>`:'<div class="empty">Aucun matériel installé enregistré.</div>');
  $('tabCommercial').innerHTML=`<div class="field"><label>Commentaires commerciaux</label><textarea id="commercialText" placeholder="Notes libres : échanges, opportunités, relances, informations commerciales…">${esc(c.commercial||'')}</textarea></div><div style="margin-top:12px;text-align:right"><button class="btn primary" onclick="saveCommercial()">Enregistrer</button></div>`;
 }
@@ -2573,13 +2573,13 @@ function requestClientDelete(id){
 }
 function closeClientDeleteModal(){pendingClientDeleteId='';const modal=$('clientDeleteModal');if(modal)modal.classList.remove('open')}
 function confirmClientDelete(){
- if(!collaboratorCanManage()){closeClientDeleteModal();window.alert('Suppression des clients réservée à Rémi, Hugo et Morgane.');return false;}
+ if(!collaboratorCanDeleteClientData()){closeClientDeleteModal();window.alert('Suppression des clients réservée à Rémi, Hugo et Morgane.');return false;}
  const targetId=String(pendingClientDeleteId||'').trim();
  if(!targetId){closeClientDeleteModal();return false;}
  const index=data.findIndex(x=>String(x.id??'').trim()===targetId);
  if(index<0){closeClientDeleteModal();window.alert('Client introuvable.');return false;}
  data.splice(index,1);
- try{localStorage.setItem(KEY,JSON.stringify(data));}catch(err){window.alert('Impossible d’enregistrer la suppression dans le navigateur.');return false;}
+ save();
  if(String(currentId||'')===targetId){currentId=null;const detail=$('detailView');if(detail){delete detail.dataset.clientId;detail.classList.remove('active')}}
  closeClientDeleteModal();
  const list=$('listView');if(list)list.style.display='block';
