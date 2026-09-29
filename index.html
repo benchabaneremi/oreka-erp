@@ -499,7 +499,11 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div class="field full"><label>Adresse</label><input id="qtplAddress" placeholder="Adresse du client / prospect"></div>
     <div class="field full"><label>Objet du devis</label><input id="qtplSubject" placeholder="Objet du devis"></div>
     <div class="field full"><label>Prestations / matériel</label>
-      <div id="qtplCatalogNotice" class="label" style="margin:4px 0 8px">Sélectionnez un produit du catalogue pour reprendre automatiquement sa désignation et son prix. Le prix reste toujours modifiable. Utilisez « Article libre » pour saisir un article qui n’est pas au catalogue.</div>
+      <div id="qtplCatalogNotice" class="label" style="margin:4px 0 8px">Recherchez un article du catalogue avec n’importe quel mot de sa désignation. Le prix repris du catalogue reste toujours modifiable. « Ajouter un article » permet aussi de saisir un article librement.</div>
+      <div style="position:relative;margin:8px 0 10px">
+        <input id="qtplCatalogSearch" class="search" type="text" placeholder="Rechercher un article du catalogue…" oninput="searchQuoteCatalog(this.value)" autocomplete="off">
+        <div id="qtplCatalogSearchResults" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.12);max-height:260px;overflow:auto"></div>
+      </div>
       <div style="overflow:auto;margin-top:6px">
         <table class="table" style="margin:0;min-width:1120px"><thead><tr>
           <th style="width:24%">Catalogue</th>
@@ -514,7 +518,7 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
         </table>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button type="button" class="btn secondary" onclick="addQuoteTemplateLine()">+ Article libre</button>
+        <button type="button" class="btn secondary" onclick="addQuoteTemplateLine()">+ Ajouter un article</button>
       </div>
       <div style="margin-top:10px;padding:10px;border:1px solid #d0d5dd;border-radius:10px;background:#f8fafc">
         <div class="label" style="margin-bottom:6px">Remise globale</div>
@@ -1496,6 +1500,7 @@ function prepareQuoteTemplate(sourceProspect=null){
     if(st)st.textContent='Informations reprises depuis le prospect.';
   }
   const qtplBody=$('qtplLines');if(qtplBody)qtplBody.innerHTML='';
+  const catalogSearch=$('qtplCatalogSearch');if(catalogSearch)catalogSearch.value='';closeQuoteCatalogSearch();
   addQuoteTemplateLine();
   toggleQuoteSaleMode();
   updateQuoteTemplateTotals();
@@ -1534,6 +1539,40 @@ function quoteCatalogOptions(selected=''){
   });
   return opts.join('');
 }
+function searchQuoteCatalog(value){
+  const box=$('qtplCatalogSearchResults');if(!box)return;
+  const q=String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(!q){box.innerHTML='';box.style.display='none';return;}
+  const terms=q.split(/\s+/).filter(Boolean);
+  const mode=$('qtplSaleMode')?.value||'achat';
+  const rows=[...catalogue].filter(item=>{
+    const hay=String([item.name,item.ref,item.type,item.description].filter(Boolean).join(' '))
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return terms.every(term=>hay.includes(term));
+  }).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'}));
+  if(!rows.length){
+    box.innerHTML='<div style="padding:12px;color:#667085">Aucun article trouvé.</div>';box.style.display='block';return;
+  }
+  box.innerHTML=rows.slice(0,30).map(item=>{
+    const p=quoteCatalogPrice(item,mode);
+    const price=p!==''?(mode==='location'?fmtMoney(Number(p))+' / mois':fmtMoney(Number(p))):'Prix non renseigné';
+    return '<button type="button" class="btn secondary" style="display:block;width:100%;text-align:left;border:0;border-radius:0;padding:10px 12px;background:#fff" onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'#fff\'" onclick="addQuoteCatalogItem(\''+esc(item.id)+'\')"><b>'+esc(item.name||'Article')+'</b>'+ (item.ref?' · '+esc(item.ref):'') +'<div class="label">'+esc(price)+'</div></button>';
+  }).join('');
+  box.style.display='block';
+}
+function closeQuoteCatalogSearch(){
+  const box=$('qtplCatalogSearchResults');if(box)box.style.display='none';
+}
+function addQuoteCatalogItem(id){
+  const item=catalogue.find(x=>String(x.id)===String(id));if(!item)return;
+  addQuoteTemplateLine({catalogId:item.id,description:item.name||'',qty:1,unitPrice:quoteCatalogPrice(item,$('qtplSaleMode')?.value||'achat')});
+  const search=$('qtplCatalogSearch');if(search)search.value='';
+  closeQuoteCatalogSearch();
+}
+document.addEventListener('click',function(e){
+  const wrap=$('qtplCatalogSearch')?.parentElement;
+  if(wrap && !wrap.contains(e.target))closeQuoteCatalogSearch();
+});
 function refreshQuoteCatalogSelects(){
   document.querySelectorAll('#qtplLines .qtpl-line-catalog').forEach(sel=>{
     const current=sel.value||sel.closest('tr')?.dataset.catalogId||'';
