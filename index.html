@@ -54,18 +54,22 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
 <style id="orekaQuoteOutputFixes">
 #orekaPrintLayer{display:none}
 @media print{
-  @page{size:A4;margin:20mm 20mm 20mm 20mm}
+  @page{size:A4;margin:0}
+  html,body{margin:0 !important;padding:0 !important;background:#fff !important}
   body.oreka-printing > *:not(#orekaPrintLayer){display:none !important}
-  body.oreka-printing > #orekaPrintLayer{display:block !important;position:static !important;width:auto !important;margin:0 !important;padding:0 !important}
+  body.oreka-printing > #orekaPrintLayer{display:block !important;position:static !important;width:210mm !important;margin:0 !important;padding:0 !important}
   body.oreka-printing #orekaPrintLayer .quote-paper{
-    max-width:none !important;width:auto !important;margin:0 !important;padding:0 !important;
-    box-shadow:none !important;border-radius:0 !important;
-    min-height:257mm !important;box-sizing:border-box !important;
+    width:210mm !important;max-width:none !important;min-height:297mm !important;
+    margin:0 !important;padding:20mm 20mm 15mm 20mm !important;
+    box-sizing:border-box !important;box-shadow:none !important;border-radius:0 !important;
     display:flex !important;flex-direction:column !important;
+  }
+  body.oreka-printing #orekaPrintLayer .quote-paper > div:first-child{
+    flex-shrink:0 !important;
   }
   body.oreka-printing #orekaPrintLayer .oreka-quote-footer{
     margin-top:auto !important;flex-shrink:0 !important;
-    padding-top:10px !important;font-size:9px !important;line-height:1.35 !important;
+    padding-top:8px !important;font-size:9px !important;line-height:1.3 !important;
   }
 }
 </style>
@@ -2162,7 +2166,7 @@ function prepareSavedQuoteActionLinks(){
       if(!q)return;
       try{
         const html=`<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Devis OREKA</title>
-        <style>@page{size:A4;margin:20mm 20mm 20mm 20mm}html,body{margin:0;padding:0;background:#fff}body{font-family:Arial,sans-serif}.quote-paper{max-width:none!important;width:auto!important;margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;min-height:257mm!important;box-sizing:border-box!important;display:flex!important;flex-direction:column!important}.oreka-quote-footer{margin-top:auto!important;flex-shrink:0!important;padding-top:10px!important;font-size:9px!important;line-height:1.35!important}</style>
+        <style>@page{size:A4;margin:0}html,body{margin:0!important;padding:0!important;background:#fff!important}body{font-family:Arial,sans-serif}.quote-paper{width:210mm!important;max-width:none!important;min-height:297mm!important;margin:0!important;padding:20mm 20mm 15mm 20mm!important;box-sizing:border-box!important;box-shadow:none!important;border-radius:0!important;display:flex!important;flex-direction:column!important}.oreka-quote-footer{margin-top:auto!important;flex-shrink:0!important;padding-top:8px!important;font-size:9px!important;line-height:1.3!important}</style>
         </head><body>${quotePreviewHtml(q)}<script>window.addEventListener('load',function(){setTimeout(function(){window.focus();window.print();},250)});<\/script></body></html>`;
         const url=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
         window.__orekaQuoteObjectUrls.push(url);
