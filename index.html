@@ -733,6 +733,8 @@ agendaWeekStart.setDate(agendaWeekStart.getDate()-((agendaWeekStart.getDay()+6)%
 const $=id=>document.getElementById(id);
 const AUTH_SESSION_KEY='oreka_session_collaborator_v1';
 const RESET_TOKENS_KEY='oreka_reset_tokens_v1';
+const ACTIVE_COLLAB_KEY='oreka_active_collaborateur_v1';
+let activeCollaboratorId=localStorage.getItem(ACTIVE_COLLAB_KEY)||'';
 let pendingResetCollaboratorId='';
 function authSessionCollaborator(){
  const id=sessionStorage.getItem(AUTH_SESSION_KEY)||'';
@@ -897,8 +899,6 @@ function saveProspects(){localStorage.setItem('oreka_prospects_v1',JSON.stringif
 function saveAgenda(){localStorage.setItem('oreka_agenda_v1',JSON.stringify(agendaEvents))}
 function saveQuotes(){localStorage.setItem('oreka_quotes_v1',JSON.stringify(quotes))}
 
-const ACTIVE_COLLAB_KEY='oreka_active_collaborateur_v1';
-let activeCollaboratorId=localStorage.getItem(ACTIVE_COLLAB_KEY)||'';
 function collaboratorLabel(c){return String([c?.prenom,c?.nom].filter(Boolean).join(' ')||c?.nom||c?.prenom||'').trim()}
 function collaboratorByLabel(label){const v=String(label||'').trim();return collaborateurs.find(c=>collaboratorLabel(c)===v)||null}
 function getActiveCollaborator(){return collaborateurs.find(c=>c.id===activeCollaboratorId)||null}
