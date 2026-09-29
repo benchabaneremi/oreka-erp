@@ -709,7 +709,7 @@ collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);
 localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));
 
 function ensureKnownCollaborator(email){
-  const key=String(email||'').trim().toLowerCase();
+  const key=String(email||'').trim().toLowerCase().replace(/\s+/g,'');
   const existing=collaborateurs.find(x=>String(x.mail||'').trim().toLowerCase()===key);
   if(existing)return existing;
   const def=KNOWN_COLLABORATORS[key];
@@ -803,7 +803,7 @@ function openFirstCollaboratorSetup(){
 }
 function login(e){
  e.preventDefault();
- const email=String($('loginEmail').value||'').trim().toLowerCase(), password=String($('loginPassword').value||'');
+ const email=String($('loginEmail').value||'').trim().toLowerCase().replace(/\s+/g,''), password=String($('loginPassword').value||'');
  if(!email){setAuthMessage('loginMessage','Saisissez votre adresse e-mail.');return;}
  collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);
  let c=collaborateurs.find(x=>String(x.mail||'').trim().toLowerCase()===email);
