@@ -499,7 +499,7 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div class="field full"><label>Adresse</label><input id="qtplAddress" placeholder="Adresse du client / prospect"></div>
     <div class="field full"><label>Objet du devis</label><input id="qtplSubject" placeholder="Objet du devis"></div>
     <div class="field full"><label>Prestations / matériel</label>
-      <div id="qtplCatalogNotice" class="label" style="margin:4px 0 8px">Recherchez un article du catalogue avec n’importe quel mot de sa désignation. Le prix repris du catalogue reste toujours modifiable. « Ajouter un article » permet aussi de saisir un article librement.</div>
+      <div id="qtplCatalogNotice" class="label" style="margin:4px 0 8px">Recherchez un article du catalogue avec n’importe quel mot de sa désignation. Le prix repris du catalogue reste toujours modifiable. « Ajouter un article » permet de saisir une ligne manuellement.</div>
       <div style="position:relative;margin:8px 0 10px">
         <input id="qtplCatalogSearch" class="search" type="text" placeholder="Rechercher un article du catalogue…" oninput="searchQuoteCatalog(this.value)" autocomplete="off">
         <div id="qtplCatalogSearchResults" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:30;background:#fff;border:1px solid #d0d5dd;border-radius:10px;box-shadow:0 8px 24px rgba(16,24,40,.12);max-height:260px;overflow:auto"></div>
@@ -1531,7 +1531,7 @@ function quoteCatalogPrice(item,mode){
 }
 function quoteCatalogOptions(selected=''){
   const mode=$('qtplSaleMode')?.value||'achat';
-  const opts=['<option value="">Article libre</option>'];
+  const opts=['<option value="">— Aucun article du catalogue —</option>'];
   [...catalogue].sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'})).forEach(item=>{
     const price=quoteCatalogPrice(item,mode);
     const suffix=price!=='' ? (mode==='location'?' — '+fmtMoney(Number(price))+' / mois':' — '+fmtMoney(Number(price))) : ' — prix non renseigné';
@@ -1583,7 +1583,7 @@ function refreshQuoteCatalogSelects(){
 function quoteLineHtml(){
   return '<tr>'+
     '<td><select class="qtpl-line-catalog" onchange="selectQuoteCatalogLine(this)" style="width:100%"></select></td>'+
-    '<td><input class="qtpl-line-desc" placeholder="Désignation libre ou issue du catalogue"></td>'+
+    '<td><input class="qtpl-line-desc" placeholder="Désignation"></td>'+
     '<td><input class="qtpl-line-qty" type="text" inputmode="decimal" value="1" placeholder="1" oninput="updateQuoteTemplateTotals()"></td>'+
     '<td><input class="qtpl-line-price" type="text" inputmode="decimal" placeholder="0,00" oninput="updateQuoteTemplateTotals()"></td>'+
     '<td><div style="display:flex;gap:5px;align-items:center"><select class="qtpl-line-discount-type" onchange="updateQuoteTemplateTotals()" style="width:58px"><option value="percent">%</option><option value="amount">€</option></select><input class="qtpl-line-discount" type="text" inputmode="decimal" placeholder="0" oninput="updateQuoteTemplateTotals()" style="min-width:70px;width:100%"></div><small class="label qtpl-line-discount-label">—</small><input class="qtpl-line-discount-reason" type="text" placeholder="Motif de remise" style="margin-top:5px;width:100%"></td>'+
