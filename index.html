@@ -609,6 +609,28 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
 </div>
 </div>
 
+<div class="modal" id="contractModal">
+<div class="modalbox">
+  <div class="modalhead"><h2 id="contractModalTitle">Ajouter un contrat</h2><button class="close" type="button" onclick="closeContractModal()">×</button></div>
+  <form class="form" id="contractForm" onsubmit="saveClientContract(event)">
+    <input type="hidden" id="contractClientId">
+    <input type="hidden" id="contractEditId">
+    <div class="field"><label>Montant HT du loyer (€) *</label><input id="contractRent" type="number" min="0" step="0.01" required oninput="updateNewContractCA()"></div>
+    <div class="field"><label>Leaseur</label><select id="contractLeaseur" onchange="toggleContractOtherLeaseur()"><option value="">— Sélectionner —</option><option value="Locam">Locam</option><option value="Leasecom">Leasecom</option><option value="Autre">Autre</option></select></div>
+    <div class="field" id="contractOtherLeaseurField" style="display:none"><label>Préciser le leaseur</label><input id="contractOtherLeaseur" placeholder="Nom du leaseur"></div>
+    <div class="field"><label>Chiffre d'affaire (€)</label><input id="contractTurnover" type="number" min="0" step="0.01"></div>
+    <div class="field"><label>Montant de l'assistance (€)</label><input id="contractAssistance" type="number" min="0" step="0.01" oninput="updateNewContractCA()"></div>
+    <div class="field"><label>CA contrat (loyer + assistance) (€)</label><input id="contractCAValue" type="number" readonly></div>
+    <div class="field"><label>Date de début de contrat *</label><input id="contractStart" type="date" required oninput="updateNewContractEnd()"></div>
+    <div class="field"><label>Durée d'engagement (mois) *</label><input id="contractDuration" type="number" min="1" step="1" value="12" required oninput="updateNewContractEnd()"></div>
+    <div class="field"><label>Fin de contrat (calculée)</label><input id="contractEnd" readonly></div>
+    <div class="field"><label>Impayés</label><select id="contractUnpaid"><option value="false">Non</option><option value="true">Oui</option></select></div>
+    <div class="field full"><label>Notes du contrat</label><textarea id="contractNotes" placeholder="Informations ou observations propres à ce contrat…"></textarea></div>
+  </form>
+  <div class="modalfoot"><button class="btn secondary" type="button" onclick="closeContractModal()">Annuler</button><button class="btn primary" type="button" onclick="document.getElementById('contractForm').requestSubmit()">Enregistrer</button></div>
+</div>
+</div>
+
 <div class="modal" id="materialModal">
 <div class="modalbox">
   <div class="modalhead"><h2>Nouveau matériel installé</h2><button class="close" onclick="closeMaterialModal()">×</button></div>
@@ -2491,6 +2513,37 @@ function renderCollaborateurs(){
 
 function showList(){$('listView').style.display='block';$('prospectView').style.display='none';$('agendaView').style.display='none';$('statisticsView').style.display='none';$('quotesView').style.display='none';$('catalogView').style.display='none';$('usefulContactsView').style.display='none';$('collaborateursView').style.display='none';$('detailView').classList.remove('active');currentId=null;if($('detailView'))delete $('detailView').dataset.clientId;document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));$('navClients').classList.add('active');renderClients()}
 function openClient(id){$('prospectView').style.display='none';$('agendaView').style.display='none';$('statisticsView').style.display='none';$('quotesView').style.display='none';$('catalogView').style.display='none';$('usefulContactsView').style.display='none';$('collaborateursView').style.display='none';currentId=id;let c=data.find(x=>x.id===id);if(!c)return;$('listView').style.display='none';$('detailView').classList.add('active');$('detailView').dataset.clientId=id;currentId=id;$('dName').textContent=(c.firstName||c.lastName)?[c.firstName,c.lastName].filter(Boolean).join(' '):c.name;$('dMeta').textContent=(c.ref?c.ref+' · ':'');const db=$('detailDeleteClientBtn');if(db)db.style.display=collaboratorCanDeleteClientData()?'inline-block':'none';renderDetail(c);tab('client',document.querySelector('.tab'))}
+function renderClientContracts(c){
+ ensureClientContracts(c);
+ const contracts=[...(c.contracts||[])];
+ const contractTotal=contracts.reduce((sum,ct)=>sum+getContractCA(ct),0);
+ let html='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b>Contrats du client</b><div class="label">'+contracts.length+' contrat(s) · CA total '+(contractTotal>0?fmtMoney(contractTotal):'—')+'</div></div><button class="btn primary" onclick="openContractModal(currentId)">+ Ajouter un contrat</button></div>';
+ if(!contracts.length){
+   html+='<div class="empty">Aucun contrat enregistré.<br><br><button class="btn primary" onclick="openContractModal(currentId)">Ajouter le premier contrat</button></div>';
+ }else{
+   html+='<div style="display:grid;gap:14px">'+contracts.map((ct,idx)=>{
+     return '<div class="panel" style="box-shadow:none;border:1px solid var(--line)">'+
+       '<div style="padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;align-items:center">'+
+         '<div><b>Contrat '+(idx+1)+'</b><div class="label">'+(ct.start?fmtDate(ct.start):'Date de début non renseignée')+' · '+(ct.duration?esc(ct.duration+' mois'):'Durée non renseignée')+'</div></div>'+
+         '<div style="display:flex;gap:8px"><button class="btn secondary" onclick="openContractModal(\''+esc(c.id)+'\',\''+esc(ct.id)+'\')">Modifier</button>'+(collaboratorCanDeleteClientData()?'<button class="btn danger" onclick="deleteClientContract(\''+esc(c.id)+'\',\''+esc(ct.id)+'\')">Supprimer</button>':'')+'</div>'+
+       '</div>'+
+       '<div class="two" style="padding:16px">'+
+         '<div class="info"><div class="label">Loyer HT</div><div class="v">'+fmtMoney(ct.rent)+'</div></div>'+
+         '<div class="info"><div class="label">Leaseur</div><div class="v">'+esc(ct.leaseur==='Autre'?(ct.otherLeaseur||'Autre'):(ct.leaseur||'—'))+'</div></div>'+
+         '<div class="info"><div class="label">Chiffre d'affaire</div><div class="v">'+(ct.turnover!=null&&ct.turnover!==''?fmtMoney(ct.turnover):'—')+'</div></div>'+
+         '<div class="info"><div class="label">Montant de l'assistance</div><div class="v">'+(ct.assistance!=null&&ct.assistance!==''?fmtMoney(ct.assistance):'—')+'</div></div>'+
+         '<div class="info"><div class="label">CA contrat (loyer + assistance)</div><div class="v">'+(getContractCA(ct)>0?fmtMoney(ct.rent+ (Number(ct.assistance)||0)):'—')+'</div></div>'+
+         '<div class="info"><div class="label">Impayés</div><div class="v"><span class="badge '+(ct.unpaid?'alert':'ok')+'">'+(ct.unpaid?'Oui':'Non')+'</span></div></div>'+
+         '<div class="info"><div class="label">Début de contrat</div><div class="v">'+fmtDate(ct.start)+'</div></div>'+
+         '<div class="info"><div class="label">Durée d'engagement</div><div class="v">'+(ct.duration?esc(ct.duration+' mois'):'—')+'</div></div>'+
+         '<div class="info"><div class="label">Date de fin de contrat</div><div class="v">'+fmtDate(calcEnd(ct.start,ct.duration))+'</div></div>'+
+       '</div>'+
+       (ct.notes?'<div class="info" style="margin:0 16px 16px"><div class="label">Notes</div><div class="comment">'+esc(ct.notes)+'</div></div>':'')+
+     '</div>';
+   }).join('')+'</div>';
+ }
+ $('tabContract').innerHTML=html;
+}
 function renderDetail(c){
  $('tabClient').innerHTML=`<div class="two">
  <div class="info"><div class="label">Nom</div><div class="v">${esc(c.lastName||'—')}</div></div>
@@ -2509,18 +2562,7 @@ function renderDetail(c){
  <div class="info" style="grid-column:1/-1"><div class="label">Disponibilités</div><div class="v">${(c.availability&&c.availability.length)?c.availability.map(x=>`<span class="badge ok" style="margin:2px">${esc(x)}</span>`).join(''):'—'}</div></div>
  </div>
  ${c.notes?`<div class="info" style="margin-top:16px"><div class="label">Notes générales</div><div class="comment">${esc(c.notes)}</div></div>`:''}`;
- $('tabContract').innerHTML=`<div class="two">
- <div class="info"><div class="label">Loyer HT</div><div class="v">${fmtMoney(c.rent)}</div></div>
- <div class="info"><div class="label">Leaseur</div><div class="v">${esc(c.leaseur==='Autre' ? (c.otherLeaseur||'Autre') : (c.leaseur||'—'))}</div></div>
- <div class="info"><div class="label">Chiffre d'affaire</div><div class="v">${c.turnover!=null && c.turnover!=='' ? fmtMoney(c.turnover) : '—'}</div></div>
- <div class="info"><div class="label">Montant de l'assistance</div><div class="v">${c.assistance!=null && c.assistance!=='' ? fmtMoney(c.assistance) : '—'}</div></div>
- <div class="info"><div class="label">CA contrat (loyer + assistance)</div><div class="v">${getContractCA(c)>0 ? fmtMoney(getContractCA(c)) : '—'}</div></div>
- <div class="info"><div class="label">Impayés</div><div class="v"><span class="badge ${c.unpaid?'alert':'ok'}">${c.unpaid?'Oui':'Non'}</span></div></div>
- <div class="info"><div class="label">Début de contrat</div><div class="v">${fmtDate(c.start)}</div></div>
- <div class="info"><div class="label">Durée d'engagement</div><div class="v">${c.duration} mois</div></div>
- <div class="info"><div class="label">Date de fin de contrat</div><div class="v">${fmtDate(calcEnd(c.start,c.duration))}</div></div>
- </div>
- ${c.notes?`<div class="info" style="margin-top:16px"><div class="label">Notes</div><div class="comment">${esc(c.notes)}</div></div>`:''}`;
+ renderClientContracts(c);
  let ints=[...(c.interventions||[])].sort((a,b)=>(b.date+b.start).localeCompare(a.date+a.start));
  $('tabTechnical').innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px"><div><b>Historique des interventions</b><div class="label">${ints.length} intervention(s)</div></div><button class="btn primary" onclick="openTechModal()">+ Nouvelle intervention</button></div>`+
  (ints.length?ints.map(i=>`<div class="intervention"><div><div class="date">${fmtDate(i.date)} · ${i.start||'--'}${i.end?' → '+i.end:''}${i.intervenant?` · ${esc(i.intervenant)}`:''}</div><div class="comment">${esc(i.comment)}</div></div>${collaboratorCanDeleteClientData()?`<button class="btn danger" onclick="deleteTech('${i.id}')">Supprimer</button>`:''}</div>`).join(''):'<div class="empty">Aucune intervention enregistrée.</div>');
@@ -2533,8 +2575,52 @@ function renderDetail(c){
 }
 function tab(which,btn){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');$('tabClient').style.display=which==='client'?'block':'none';$('tabContract').style.display=which==='contract'?'block':'none';$('tabTechnical').style.display=which==='technical'?'block':'none';$('tabMaterial').style.display=which==='material'?'block':'none';$('tabCommercial').style.display=which==='commercial'?'block':'none'}
 function getContractCA(c){
+ if(Array.isArray(c?.contracts) && c.contracts.length) return c.contracts.reduce((sum,ct)=>sum+Math.max(0,(Number(ct?.rent)||0)+(Number(ct?.assistance)||0)),0);
  const rent=Number(c?.rent)||0, assistance=Number(c?.assistance)||0;
  return Math.max(0,rent+assistance);
+}
+function ensureClientContracts(c){
+ if(!c)return [];
+ if(!Array.isArray(c.contracts)){
+   const hasLegacy=(c.start||c.rent!=null||c.assistance!=null||c.leaseur||c.duration);
+   c.contracts=hasLegacy?[{id:uid(),rent:Number(c.rent)||0,leaseur:c.leaseur||'',otherLeaseur:c.otherLeaseur||'',turnover:c.turnover??'',assistance:c.assistance??'',contractCA:(Number(c.rent)||0)+(Number(c.assistance)||0),start:c.start||'',duration:Number(c.duration)||12,unpaid:!!c.unpaid,notes:''}]:[];
+ }
+ c.contracts=c.contracts.filter(x=>x&&x.id).map(x=>Object.assign({rent:0,leaseur:'',otherLeaseur:'',turnover:'',assistance:'',contractCA:0,start:'',duration:12,unpaid:false,notes:''},x));
+ return c.contracts;
+}
+function syncLegacyContractFields(c,ct){
+ if(!c||!ct)return;
+ Object.assign(c,{rent:Number(ct.rent)||0,leaseur:ct.leaseur||'',otherLeaseur:ct.otherLeaseur||'',turnover:ct.turnover??'',assistance:ct.assistance??'',contractCA:(Number(ct.rent)||0)+(Number(ct.assistance)||0),start:ct.start||'',duration:Number(ct.duration)||12,unpaid:!!ct.unpaid});
+}
+function getContractFormValues(){
+ return {id:uid(),rent:Number($('contractRent')?.value)||0,leaseur:$('contractLeaseur')?.value||'',otherLeaseur:$('contractLeaseur')?.value==='Autre'?($('contractOtherLeaseur')?.value||'').trim():'',turnover:$('contractTurnover')?.value===''?'':Number($('contractTurnover')?.value),assistance:$('contractAssistance')?.value===''?'':Number($('contractAssistance')?.value),start:$('contractStart')?.value||'',duration:Number($('contractDuration')?.value)||12,unpaid:$('contractUnpaid')?.value==='true',notes:$('contractNotes')?.value?.trim()||''};
+}
+function toggleContractOtherLeaseur(){
+ const other=$('contractLeaseur')?.value==='Autre';if($('contractOtherLeaseurField'))$('contractOtherLeaseurField').style.display=other?'block':'none';if(!other&&$('contractOtherLeaseur'))$('contractOtherLeaseur').value='';
+}
+function updateNewContractCA(){
+ const total=(Number($('contractRent')?.value)||0)+(Number($('contractAssistance')?.value)||0);if($('contractCAValue'))$('contractCAValue').value=total>0?total.toFixed(2):'';
+}
+function updateNewContractEnd(){
+ const end=calcEnd($('contractStart')?.value||'',$('contractDuration')?.value||'');if($('contractEnd'))$('contractEnd').value=end;
+}
+function openContractModal(clientId,contractId=null){
+ const c=data.find(x=>x.id===clientId);if(!c)return;ensureClientContracts(c);
+ $('contractClientId').value=clientId||'';$('contractEditId').value=contractId||'';$('contractModalTitle').textContent=contractId?'Modifier le contrat':'Ajouter un contrat';
+ if(contractId){const ct=c.contracts.find(x=>x.id===contractId);if(!ct)return;$('contractRent').value=ct.rent??0;$('contractLeaseur').value=ct.leaseur||'';$('contractOtherLeaseur').value=ct.otherLeaseur||'';$('contractTurnover').value=ct.turnover??'';$('contractAssistance').value=ct.assistance??'';$('contractStart').value=ct.start||'';$('contractDuration').value=ct.duration||12;$('contractUnpaid').value=String(!!ct.unpaid);$('contractNotes').value=ct.notes||'';}
+ else{$('contractForm').reset();$('contractClientId').value=clientId;$('contractEditId').value='';$('contractDuration').value=12;$('contractUnpaid').value='false';$('contractStart').value=localDateISO();$('contractNotes').value='';}
+ toggleContractOtherLeaseur();updateNewContractCA();updateNewContractEnd();$('contractModal').classList.add('open');
+}
+function closeContractModal(){$('contractModal').classList.remove('open')}
+function saveClientContract(e){
+ e.preventDefault();const clientId=$('contractClientId').value,editId=$('contractEditId').value,c=data.find(x=>x.id===clientId);if(!c)return;ensureClientContracts(c);const ct=getContractFormValues();
+ if(editId){const existing=c.contracts.find(x=>x.id===editId);if(!existing)return;ct.id=editId;Object.assign(existing,ct);}else c.contracts.push(ct);
+ syncLegacyContractFields(c,c.contracts[0]);save();closeContractModal();openClient(clientId);
+}
+function deleteClientContract(clientId,contractId){
+ if(!collaboratorCanDeleteClientData()){alert('Suppression des contrats réservée à Rémi, Hugo et Morgane.');return false;}
+ const c=data.find(x=>x.id===clientId);if(!c)return false;ensureClientContracts(c);if(c.contracts.length<=1){alert('Un client doit conserver au moins un contrat.');return false;}
+ c.contracts=c.contracts.filter(x=>x.id!==contractId);syncLegacyContractFields(c,c.contracts[0]);save();openClient(clientId);return true;
 }
 function updateContractCA(){
  const el=$('contractCA'); if(!el)return;
@@ -2544,7 +2630,7 @@ function updateContractCA(){
 }
 function openClientModal(id=null){
  $('editId').value=id||'';$('modalTitle').textContent=id?'Modifier le client':'Nouveau client';
- if(id){let c=data.find(x=>x.id===id);$('name').value=c.name;$('siren').value=c.siren||'';ensureLegacyOption($('commercialSeller'),c.commercial||'');$('commercialSeller').value=c.commercial||'';$('rent').value=c.rent;$('leaseur').value=c.leaseur||'';$('otherLeaseur').value=c.otherLeaseur||'';$('turnover').value=c.turnover??'';$('assistance').value=c.assistance??'';$('contractCA').value=getContractCA(c)>0?getContractCA(c).toFixed(2):'';$('activity').value=c.activity||'';$('legalForm').value=c.legalForm||'';$('employeeRange').value=c.employeeRange||'';$('companyCreated').value=c.companyCreated||'';$('establishmentCount').value=c.establishmentCount??'';$('start').value=c.start;$('duration').value=c.duration;$('unpaid').value=String(c.unpaid);$('firstName').value=c.firstName||'';$('lastName').value=c.lastName||'';$('directorRole').value=c.directorRole||'';$('phone').value=c.phone||c.contact||'';$('email').value=c.email||'';$('address').value=c.address||'';$('notes').value=c.notes||'';
+ if(id){let c=data.find(x=>x.id===id);ensureClientContracts(c);if(c.contracts[0])syncLegacyContractFields(c,c.contracts[0]);$('name').value=c.name;$('siren').value=c.siren||'';ensureLegacyOption($('commercialSeller'),c.commercial||'');$('commercialSeller').value=c.commercial||'';$('rent').value=c.rent;$('leaseur').value=c.leaseur||'';$('otherLeaseur').value=c.otherLeaseur||'';$('turnover').value=c.turnover??'';$('assistance').value=c.assistance??'';$('contractCA').value=getContractCA(c)>0?getContractCA(c).toFixed(2):'';$('activity').value=c.activity||'';$('legalForm').value=c.legalForm||'';$('employeeRange').value=c.employeeRange||'';$('companyCreated').value=c.companyCreated||'';$('establishmentCount').value=c.establishmentCount??'';$('start').value=c.start;$('duration').value=c.duration;$('unpaid').value=String(c.unpaid);$('firstName').value=c.firstName||'';$('lastName').value=c.lastName||'';$('directorRole').value=c.directorRole||'';$('phone').value=c.phone||c.contact||'';$('email').value=c.email||'';$('address').value=c.address||'';$('notes').value=c.notes||'';
     let av=c.availability||[];
     ['lundi_matin','lundi_apres_midi','mardi_matin','mardi_apres_midi','mercredi_matin','mercredi_apres_midi','jeudi_matin','jeudi_apres_midi','vendredi_matin','vendredi_apres_midi'].forEach(k=>{let el=$('avail_'+k);if(el)el.checked=av.includes(el.value)});toggleOtherLeaseur();updateEnd()}
  else{$('clientForm').reset();['lundi_matin','lundi_apres_midi','mardi_matin','mardi_apres_midi','mercredi_matin','mercredi_apres_midi','jeudi_matin','jeudi_apres_midi','vendredi_matin','vendredi_apres_midi'].forEach(k=>{let el=$('avail_'+k);if(el)el.checked=false});$('duration').value=12;$('unpaid').value='false';$('end').value='';$('clientSirenStatus').textContent='';toggleOtherLeaseur();updateContractCA()}
@@ -2591,7 +2677,19 @@ function effectifLabel(code){
 }
 function closeModal(){$('clientModal').classList.remove('open')}
 function toggleOtherLeaseur(){let isOther=$('leaseur').value==='Autre';$('otherLeaseurField').style.display=isOther?'block':'none';if(!isOther)$('otherLeaseur').value=''}
-function saveClient(e){e.preventDefault();let id=$('editId').value;let c=id?data.find(x=>x.id===id):{id:uid(),interventions:[]};Object.assign(c,{name:$('name').value.trim(),siren:$('siren').value.replace(/\D/g,'').slice(0,9),rent:Number($('rent').value),leaseur:$('leaseur').value,otherLeaseur:$('leaseur').value==='Autre'?$('otherLeaseur').value.trim():'',turnover:$('turnover').value===''?'':Number($('turnover').value),assistance:$('assistance').value===''?'':Number($('assistance').value),contractCA:getContractCA({rent:$('rent').value,assistance:$('assistance').value}),activity:$('activity').value.trim(),legalForm:$('legalForm').value.trim(),employeeRange:$('employeeRange').value.trim(),companyCreated:$('companyCreated').value,establishmentCount:$('establishmentCount').value===''?'':Number($('establishmentCount').value),start:$('start').value,duration:Number($('duration').value),unpaid:$('unpaid').value==='true',firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),directorRole:$('directorRole').value.trim(),phone:$('phone').value.trim(),email:$('email').value.trim(),contact:$('phone').value.trim(),address:$('address').value.trim(),notes:$('notes').value.trim(),availability:['lundi_matin','lundi_apres_midi','mardi_matin','mardi_apres_midi','mercredi_matin','mercredi_apres_midi','jeudi_matin','jeudi_apres_midi','vendredi_matin','vendredi_apres_midi'].map(k=>$('avail_'+k)).filter(el=>el&&el.checked).map(el=>el.value),commercial:$('commercialSeller').value});if(!id)data.push(c);save();closeModal();renderClients();if(currentId)openClient(currentId)}
+function saveClient(e){
+ e.preventDefault();
+ let id=$('editId').value;
+ let c=id?data.find(x=>x.id===id):{id:uid(),interventions:[],contracts:[]};
+ ensureClientContracts(c);
+ const firstContract=c.contracts[0]||{id:uid()};
+ Object.assign(firstContract,{rent:Number($('rent').value)||0,leaseur:$('leaseur').value||'',otherLeaseur:$('leaseur').value==='Autre'?$('otherLeaseur').value.trim():'',turnover:$('turnover').value===''?'':Number($('turnover').value),assistance:$('assistance').value===''?'':Number($('assistance').value),contractCA:(Number($('rent').value)||0)+(Number($('assistance').value)||0),start:$('start').value,duration:Number($('duration').value)||12,unpaid:$('unpaid').value==='true'});
+ if(!c.contracts.length)c.contracts=[firstContract];else c.contracts[0]=firstContract;
+ Object.assign(c,{name:$('name').value.trim(),siren:$('siren').value.replace(/\D/g,'').slice(0,9),activity:$('activity').value.trim(),legalForm:$('legalForm').value.trim(),employeeRange:$('employeeRange').value.trim(),companyCreated:$('companyCreated').value,establishmentCount:$('establishmentCount').value===''?'':Number($('establishmentCount').value),firstName:$('firstName').value.trim(),lastName:$('lastName').value.trim(),directorRole:$('directorRole').value.trim(),phone:$('phone').value.trim(),email:$('email').value.trim(),contact:$('phone').value.trim(),address:$('address').value.trim(),notes:$('notes').value.trim(),availability:['lundi_matin','lundi_apres_midi','mardi_matin','mardi_apres_midi','mercredi_matin','mercredi_apres_midi','jeudi_matin','jeudi_apres_midi','vendredi_matin','vendredi_apres_midi'].map(k=>$('avail_'+k)).filter(el=>el&&el.checked).map(el=>el.value),commercial:$('commercialSeller').value});
+ syncLegacyContractFields(c,c.contracts[0]);
+ if(!id)data.push(c);
+ save();closeModal();renderClients();if(currentId)openClient(currentId);
+}
 function editCurrent(){if(currentId)openClientModal(currentId)}
 let pendingClientDeleteId='';
 function requestClientDelete(id){
