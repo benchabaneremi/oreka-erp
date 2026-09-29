@@ -2531,7 +2531,7 @@ function renderClientContracts(c){
          '<div class="info"><div class="label">Loyer HT</div><div class="v">'+fmtMoney(ct.rent)+'</div></div>'+
          '<div class="info"><div class="label">Leaseur</div><div class="v">'+esc(ct.leaseur==='Autre'?(ct.otherLeaseur||'Autre'):(ct.leaseur||'—'))+'</div></div>'+
          '<div class="info"><div class="label">Chiffre d\'affaire</div><div class="v">'+(ct.turnover!=null&&ct.turnover!==''?fmtMoney(ct.turnover):'—')+'</div></div>'+
-         '<div class="info"><div class="label">Montant de l'assistance</div><div class="v">'+(ct.assistance!=null&&ct.assistance!==''?fmtMoney(ct.assistance):'—')+'</div></div>'+
+         '<div class="info"><div class="label">Montant de l\'assistance</div><div class="v">'+(ct.assistance!=null&&ct.assistance!==''?fmtMoney(ct.assistance):'—')+'</div></div>'+
          '<div class="info"><div class="label">CA contrat (loyer + assistance)</div><div class="v">'+(getContractCA(ct)>0?fmtMoney(ct.rent+ (Number(ct.assistance)||0)):'—')+'</div></div>'+
          '<div class="info"><div class="label">Impayés</div><div class="v"><span class="badge '+(ct.unpaid?'alert':'ok')+'">'+(ct.unpaid?'Oui':'Non')+'</span></div></div>'+
          '<div class="info"><div class="label">Début de contrat</div><div class="v">'+fmtDate(ct.start)+'</div></div>'+
