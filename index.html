@@ -195,13 +195,13 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
   <div class="nav">
     <button class="active" id="navClients" onclick="showList()">Clients</button>
     <button onclick="openClientModal()">+ Nouveau client</button>
-    <button id="navProspects" class="collab-only" onclick="showProspects()">+ Prospection</button>
-    <button id="navQuotes" class="collab-only" onclick="showQuotes()">Devis</button>
-    <button id="navAgenda" class="collab-only" onclick="showAgenda()">Agenda</button>
-    <button id="navStatistics" onclick="showStatistics()">Statistique</button>
-    <button id="navCollaborateurs" onclick="showCollaborateurs()">Collaborateurs</button>
-    <button id="navCatalog" onclick="showCatalog()">Catalogue</button>
-    <button id="navUsefulContacts" onclick="showUsefulContacts()">Contacts utiles</button>
+    <button id="navProspects" class="collab-only" type="button" onclick="return window.orekaNavigate('prospects')">+ Prospection</button>
+    <button id="navQuotes" class="collab-only" type="button" onclick="return window.orekaNavigate('quotes')">Devis</button>
+    <button id="navAgenda" class="collab-only" type="button" onclick="return window.orekaNavigate('agenda')">Agenda</button>
+    <button id="navStatistics" type="button" onclick="return window.orekaNavigate('statistics')">Statistique</button>
+    <button id="navCollaborateurs" type="button" onclick="return window.orekaNavigate('collaborateurs')">Collaborateurs</button>
+    <button id="navCatalog" type="button" onclick="return window.orekaNavigate('catalog')">Catalogue</button>
+    <button id="navUsefulContacts" type="button" onclick="return window.orekaNavigate('contacts')">Contacts utiles</button>
   </div>
 </aside>
 <main class="main">
@@ -3020,6 +3020,37 @@ document.addEventListener('DOMContentLoaded',function(){
  </div>
 </div>
 <script>
+window.orekaNavigate=function(view){
+  try{
+    const active=typeof getActiveCollaborator==='function' ? getActiveCollaborator() : null;
+    if(!active){
+      const id=sessionStorage.getItem('oreka_session_collaborator_v1')||localStorage.getItem('oreka_active_collaborateur_v1')||'';
+      if(id && typeof collaborateurs!=='undefined'){
+        const c=collaborateurs.find(x=>String(x.id)===String(id));
+        if(c) activeCollaboratorId=c.id;
+      }
+    }
+    if(view==='statistics' || view==='collaborateurs'){
+      if(typeof collaboratorCanManage==='function' && !collaboratorCanManage()){alert('Accès réservé à Rémi, Hugo et Morgane.');return false;}
+    }
+    const f={
+      prospects:()=>showProspects(),
+      quotes:()=>showQuotes(),
+      agenda:()=>showAgenda(),
+      statistics:()=>showStatistics(),
+      collaborateurs:()=>showCollaborateurs(),
+      catalog:()=>showCatalog(),
+      contacts:()=>showUsefulContacts()
+    }[view];
+    if(f) f();
+    return false;
+  }catch(err){
+    console.error('OREKA navigation error:',view,err);
+    alert('Une erreur empêche l’ouverture de cet onglet. Rechargez la page puis réessayez.');
+    return false;
+  }
+};
+
 window.orekaDirectLogin = function(e){
   if(e && e.preventDefault)e.preventDefault();
   const emailEl=document.getElementById('loginEmail');
