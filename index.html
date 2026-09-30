@@ -2435,7 +2435,7 @@ function quotePreviewHtml(quote){
   const lineRows=(quote.lines||[]).map(ln=>{
     const disc=Number(ln.discountAmount)>0 ? (ln.discountType==='amount'?fmtMoney(ln.discountValue):`${formatQuoteNumber(ln.discountValue)} %`) : '';
     const discWithReason=disc&&ln.discountReason ? `${disc}<div class="label">${esc(ln.discountReason)}</div>` : disc;
-    return `<tr><td style="font-size:11px">${esc(ln.description||'')}</td><td>${esc(ln.qty??0)}</td><td>${esc(fmtMoney(ln.unitPrice))}</td>${hasLineDiscount?`<td>${discWithReason||''}</td>`:''}<td>${esc(fmtMoney(ln.total))}</td></tr>`;
+    return `<tr><td style="font-size:11px">${esc(ln.description||'')}</td><td style="font-size:11px">${esc(ln.qty??0)}</td><td style="font-size:11px">${esc(fmtMoney(ln.unitPrice))}</td>${hasLineDiscount?`<td style="font-size:11px">${discWithReason||''}</td>`:''}<td style="font-size:11px">${esc(fmtMoney(ln.total))}</td></tr>`;
   }).join('');
   const global=(Number(quote.globalDiscountAmount)||Number(quote.globalDiscountValue)) ? `<div style="display:flex;justify-content:flex-end;gap:18px;margin-top:8px"><div><b>Remise globale</b>${quote.globalDiscountReason?`<div class="label">${esc(quote.globalDiscountReason)}</div>`:''}</div><b>− ${esc(fmtMoney(quote.globalDiscountAmount))}</b></div>` : '';
   return `<div class="quote-paper" style="max-width:820px;margin:0 auto;background:#fff;padding:34px;border-radius:4px;box-shadow:0 3px 18px rgba(16,24,40,.12);font-family:Arial,sans-serif;color:#101828">\
