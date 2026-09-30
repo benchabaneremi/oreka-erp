@@ -3095,7 +3095,36 @@ window.orekaDirectLogin = function(e){
       }
     }catch(_){}
 
+    // Afficher immédiatement tous les onglets accessibles au collaborateur connecté.
+    // Les fonctions de synchronisation ne doivent pas être nécessaires pour rendre le menu actif.
+    try{
+      ['navProspects','navQuotes','navAgenda','navCatalog','navUsefulContacts'].forEach(id=>{
+        const b=document.getElementById(id);
+        if(b){b.style.display='block';b.disabled=false;}
+      });
+      const first=String(c.prenom||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const last=String(c.nom||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const canManage=['remi','hugo','morgane'].includes(first)||['remi','hugo','morgane'].includes(last);
+      ['navStatistics','navCollaborateurs'].forEach(id=>{
+        const b=document.getElementById(id);
+        if(b){b.style.display=canManage?'block':'none';b.disabled=!canManage;}
+      });
+    }catch(_){}
     try{if(typeof refreshCollaboratorSelects==='function')refreshCollaboratorSelects();}catch(_){}
+    // La fonction ci-dessus peut modifier le menu ; on réapplique l'accès ici.
+    try{
+      ['navProspects','navQuotes','navAgenda','navCatalog','navUsefulContacts'].forEach(id=>{
+        const b=document.getElementById(id);
+        if(b){b.style.display='block';b.disabled=false;}
+      });
+      const first=String(c.prenom||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const last=String(c.nom||'').trim().toLowerCase().normalize('NFD').replace(/\p{M}/gu,'');
+      const canManage=['remi','hugo','morgane'].includes(first)||['remi','hugo','morgane'].includes(last);
+      ['navStatistics','navCollaborateurs'].forEach(id=>{
+        const b=document.getElementById(id);
+        if(b){b.style.display=canManage?'block':'none';b.disabled=!canManage;}
+      });
+    }catch(_){}
     try{if(typeof showList==='function')showList();}catch(err){console.warn('OREKA showList:',err);}
     showMsg('Connexion réussie.',true);
     return false;
