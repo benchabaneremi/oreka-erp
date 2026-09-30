@@ -894,9 +894,25 @@ async function orekaSharedSave(type,arr){
  }catch(err){console.warn('OREKA synchronisation sauvegarde',type,err);}
 }
 async function initOrekaSharedSync(){
- await orekaSharedLoadAll();collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));
- orekaSharedReady=true;const pending=orekaSharedPending;orekaSharedPending={};for(const [type,arr] of Object.entries(pending))await orekaSharedSave(type,arr);
- updateAuthControls();renderClients();if(typeof renderUsefulContacts==='function')renderUsefulContacts();if(typeof renderCatalog==='function')renderCatalog();if(typeof renderProspects==='function')renderProspects();if(typeof renderQuotes==='function')renderQuotes();if(typeof renderAgenda==='function')renderAgenda();
+  try{await orekaSharedLoadAll();}catch(e){console.warn('OREKA synchronisation chargement global',e);}
+  try{
+    collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);
+    localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(collaborateurs));
+  }catch(e){console.warn('OREKA collaborateurs',e);}
+  orekaSharedReady=true;
+  const pending=orekaSharedPending;orekaSharedPending={};
+  for(const [type,arr] of Object.entries(pending)){
+    try{await orekaSharedSave(type,arr);}catch(e){console.warn('OREKA synchronisation sauvegarde',type,e);}
+  }
+  // Chaque rendu est indépendant : une erreur dans un module ne doit plus empêcher
+  // les clients, le catalogue ou les contacts utiles de s'afficher.
+  try{updateAuthControls();}catch(e){console.warn('OREKA updateAuthControls',e);}
+  try{renderClients();}catch(e){console.warn('OREKA renderClients',e);}
+  try{if(typeof renderUsefulContacts==='function')renderUsefulContacts();}catch(e){console.warn('OREKA renderUsefulContacts',e);}
+  try{if(typeof renderCatalog==='function')renderCatalog();}catch(e){console.warn('OREKA renderCatalog',e);}
+  try{if(typeof renderProspects==='function')renderProspects();}catch(e){console.warn('OREKA renderProspects',e);}
+  try{if(typeof renderQuotes==='function')renderQuotes();}catch(e){console.warn('OREKA renderQuotes',e);}
+  try{if(typeof renderAgenda==='function')renderAgenda();}catch(e){console.warn('OREKA renderAgenda',e);}
 }
 window.addEventListener('online',()=>{if(!orekaSharedReady)initOrekaSharedSync().catch(e=>console.warn(e));});
 scheduleOrekaTaskBadgeRefresh();
@@ -1089,7 +1105,21 @@ const ACTIVE_COLLAB_KEY='oreka_active_collaborateur_v1';
 let activeCollaboratorId=localStorage.getItem(ACTIVE_COLLAB_KEY)||'';
 function collaboratorLabel(c){return String([c?.prenom,c?.nom].filter(Boolean).join(' ')||c?.nom||c?.prenom||'').trim()}
 function collaboratorByLabel(label){const v=String(label||'').trim();return collaborateurs.find(c=>collaboratorLabel(c)===v)||null}
-function getActiveCollaborator(){return collaborateurs.find(c=>c.id===activeCollaboratorId)||null}
+function getActiveCollaborator(){
+  const ids=[];
+  try{if(activeCollaboratorId)ids.push(String(activeCollaboratorId));}catch(_){}
+  try{const id=sessionStorage.getItem(AUTH_SESSION_KEY);if(id)ids.push(String(id));}catch(_){}
+  try{const id=localStorage.getItem(ACTIVE_COLLAB_KEY);if(id)ids.push(String(id));}catch(_){}
+  let c=collaborateurs.find(x=>ids.includes(String(x?.id||'')));
+  if(!c){
+    try{
+      const email=localStorage.getItem('oreka_active_collaborator_email_v1')||'';
+      if(email)c=collaborateurs.find(x=>String(x?.mail||x?.email||'').trim().toLowerCase()===email.trim().toLowerCase());
+      if(c){activeCollaboratorId=c.id;try{sessionStorage.setItem(AUTH_SESSION_KEY,String(c.id));}catch(_){}}
+    }catch(_){}
+  }
+  return c||null;
+}
 function activeCollaboratorName(){return collaboratorLabel(getActiveCollaborator())}
 function collaboratorNames(){return collaborateurs.map(collaboratorLabel).filter(Boolean).sort((a,b)=>a.localeCompare(b,'fr',{sensitivity:'base'}))}
 function collaborateurNamesForAgenda(){return collaboratorNames()}
@@ -3143,6 +3173,7 @@ window.orekaDirectLogin = function(e){
 
     try{window.sessionStorage?.setItem('oreka_session_collaborator_v1',cid);}catch(_){}
     try{window.localStorage?.setItem('oreka_active_collaborateur_v1',cid);}catch(_){}
+    try{window.localStorage?.setItem('oreka_active_collaborator_email_v1',email);}catch(_){}
     try{window.activeCollaboratorId=cid;}catch(_){}
     try{activeCollaboratorId=cid;}catch(_){}
 
