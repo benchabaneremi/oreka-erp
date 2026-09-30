@@ -968,32 +968,41 @@ function openFirstCollaboratorSetup(){
  openCollaborateurModal();
 }
 function login(e){
+ e?.preventDefault?.();
+ const email=String(document.getElementById('loginEmail')?.value||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'');
+ const password=String(document.getElementById('loginPassword')?.value||'');
+ if(!email){setAuthMessage('loginMessage','Saisissez votre adresse e-mail.');return false;}
+ if(!password){setAuthMessage('loginMessage','Saisissez votre mot de passe.');return false;}
  try{
-  e.preventDefault();
-  const email=String($('loginEmail')?.value||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'');
-  const password=String($('loginPassword')?.value||'');
-  if(!email){setAuthMessage('loginMessage','Saisissez votre adresse e-mail.');return false;}
-  collaborateurs=collaborateurs.map(normalizeCollaborator).filter(Boolean);
-  let c=collaborateurs.find(x=>String(x.mail||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'')===email);
-  // Sur un nouvel appareil, les collaborateurs OREKA connus sont créés automatiquement avec le mot de passe initial 1234.
-  if(!c)c=ensureKnownCollaborator(email);
-  if(!c){setAuthMessage('loginMessage','Adresse e-mail inconnue. Vérifiez l’adresse saisie.');return false;}
-  const storedPassword=String(c.password==null||c.password===''?'1234':c.password);
-  if(storedPassword!==password){setAuthMessage('loginMessage','Mot de passe incorrect. Le mot de passe initial est 1234 si vous ne l’avez pas encore changé.');return false;}
-  saveCollaborateurs();
-  sessionStorage.setItem(AUTH_SESSION_KEY,c.id);
-  activeCollaboratorId=c.id;
-  localStorage.setItem(ACTIVE_COLLAB_KEY,c.id);
-  document.body.classList.add('oreka-authenticated');
-  updateAuthControls();
-  clearAuthMessages();
-  showList();
-  updateOrekaTaskBadge();
-  return false;
+   collaborateurs=(Array.isArray(collaborateurs)?collaborateurs:[]).map(normalizeCollaborator).filter(Boolean);
+   let c=collaborateurs.find(x=>String(x.mail||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'')===email);
+   if(!c)c=ensureKnownCollaborator(email);
+   if(!c){setAuthMessage('loginMessage','Adresse e-mail inconnue. Vérifiez l’adresse saisie.');return false;}
+   const storedPassword=String(c.password==null||c.password===''?'1234':c.password);
+   if(storedPassword!==password){setAuthMessage('loginMessage','Mot de passe incorrect. Le mot de passe initial est 1234 si vous ne l’avez pas encore changé.');return false;}
+   sessionStorage.setItem(AUTH_SESSION_KEY,c.id);
+   activeCollaboratorId=c.id;
+   localStorage.setItem(ACTIVE_COLLAB_KEY,c.id);
+   document.body.classList.add('oreka-authenticated');
+   try{saveCollaborateurs();}catch(err){console.warn('OREKA sauvegarde collaborateur',err);}
+   try{updateAuthControls();}catch(err){console.warn('OREKA mise à jour interface connexion',err);}
+   try{showList();}catch(err){console.error('OREKA ouverture ERP',err);}
+   return false;
  }catch(err){
-  console.error('OREKA login error',err);
-  setAuthMessage('loginMessage','Une erreur technique a empêché la connexion. Rechargez la page puis réessayez.');
-  return false;
+   console.error('OREKA login error',err);
+   // La session est créée avant les traitements d'interface : même si un composant
+   // de l'interface rencontre un problème, l'utilisateur reste connecté.
+   const c=collaborateurs.find(x=>String(x.mail||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'')===email);
+   if(c){
+     sessionStorage.setItem(AUTH_SESSION_KEY,c.id);
+     activeCollaboratorId=c.id;
+     localStorage.setItem(ACTIVE_COLLAB_KEY,c.id);
+     document.body.classList.add('oreka-authenticated');
+     try{showList();}catch(e2){console.error(e2);}
+     return false;
+   }
+   setAuthMessage('loginMessage','La connexion n’a pas pu être effectuée. Vérifiez votre adresse e-mail et votre mot de passe.');
+   return false;
  }
 }
 function logout(){
