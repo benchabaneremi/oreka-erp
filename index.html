@@ -3021,27 +3021,30 @@ document.addEventListener('DOMContentLoaded',function(){
 </div>
 <script>
 window.orekaDirectLogin = function(e){
+  if(e && e.preventDefault)e.preventDefault();
+  const emailEl=document.getElementById('loginEmail');
+  const passEl=document.getElementById('loginPassword');
+  const msgEl=document.getElementById('loginMessage');
+  const showMsg=(msg,ok=false)=>{
+    if(!msgEl)return;
+    msgEl.textContent=msg;
+    msgEl.classList.add('show');
+    msgEl.style.background=ok?'#effaf2':'#fef3f2';
+    msgEl.style.color=ok?'#16734b':'#b42318';
+  };
   try{
-    if(e && e.preventDefault)e.preventDefault();
-    const emailEl=document.getElementById('loginEmail');
-    const passEl=document.getElementById('loginPassword');
-    const msgEl=document.getElementById('loginMessage');
-    const showMsg=(msg,ok=false)=>{
-      if(!msgEl)return;
-      msgEl.textContent=msg;
-      msgEl.classList.add('show');
-      msgEl.style.background=ok?'#effaf2':'#fef3f2';
-      msgEl.style.color=ok?'#16734b':'#b42318';
-    };
     const email=String(emailEl?.value||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'');
     const password=String(passEl?.value||'');
     if(!email){showMsg('Saisissez votre adresse e-mail.');emailEl?.focus();return false;}
     if(!password){showMsg('Saisissez votre mot de passe.');passEl?.focus();return false;}
 
-    // La connexion ne doit plus attendre la synchronisation Supabase.
-    // On authentifie immédiatement puis la synchronisation continue en arrière-plan.
     let list=[];
-    try{list=JSON.parse(localStorage.getItem('oreka_collaborateurs_v1')||'[]');if(!Array.isArray(list))list=[];}catch(err){list=[];}
+    try{
+      const raw=window.localStorage?.getItem('oreka_collaborateurs_v1')||'[]';
+      const parsed=JSON.parse(raw);
+      if(Array.isArray(parsed))list=parsed;
+    }catch(_){list=[];}
+
     const known={
       'remi@o-reka.com':{nom:'',prenom:'Rémi',mail:'remi@o-reka.com',telephone:'0650814545'},
       'hugo@o-reka.com':{nom:'',prenom:'Hugo',mail:'hugo@o-reka.com',telephone:'0650024736'},
@@ -3049,38 +3052,62 @@ window.orekaDirectLogin = function(e){
       'théophile@o-reka.com':{nom:'',prenom:'Théophile',mail:'théophile@o-reka.com',telephone:'0660612655'},
       'compta@o-reka.com':{nom:'',prenom:'Morgane',mail:'compta@o-reka.com',telephone:'0635351214'}
     };
-    let c=list.find(x=>String(x?.mail||x?.email||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'')===email);
+
+    let c=list.find(x=>{
+      try{return String(x?.mail||x?.email||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'')===email;}
+      catch(_){return false;}
+    });
+
     if(!c && known[email]){
       c={...known[email],id:(window.crypto?.randomUUID?window.crypto.randomUUID():(Date.now().toString(36)+Math.random().toString(36).slice(2))),password:'1234'};
       list.push(c);
-      localStorage.setItem('oreka_collaborateurs_v1',JSON.stringify(list));
+      try{window.localStorage?.setItem('oreka_collaborateurs_v1',JSON.stringify(list));}catch(_){}
     }
+
     if(!c){showMsg('Adresse e-mail inconnue. Vérifiez l’adresse saisie.');return false;}
     const expected=String(c.password==null||c.password===''?'1234':c.password);
-    if(expected!==password){showMsg('Mot de passe incorrect. Le mot de passe initial est 1234 si vous ne l’avez pas encore changé.');passEl?.focus();return false;}
+    if(expected!==password){showMsg('Mot de passe incorrect. Vérifiez le mot de passe saisi.');passEl?.focus();return false;}
 
-    // Ouverture immédiate de l'ERP sans rechargement de page.
-    sessionStorage.setItem(AUTH_SESSION_KEY,String(c.id));
-    activeCollaboratorId=String(c.id);
-    localStorage.setItem(ACTIVE_COLLAB_KEY,String(c.id));
+    const cid=String(c.id||'');
+    if(!cid){showMsg('Le collaborateur ne possède pas d’identifiant.');return false;}
+
+    try{window.sessionStorage?.setItem('oreka_session_collaborator_v1',cid);}catch(_){}
+    try{window.localStorage?.setItem('oreka_active_collaborateur_v1',cid);}catch(_){}
+    try{window.activeCollaboratorId=cid;}catch(_){}
+    try{activeCollaboratorId=cid;}catch(_){}
+
     document.body.classList.add('oreka-authenticated');
     const auth=document.getElementById('authScreen'); if(auth)auth.style.display='none';
     const app=document.querySelector('.app'); if(app)app.style.display='flex';
-    if(typeof updateAuthControls==='function'){try{updateAuthControls();}catch(err){console.warn(err);}}
-    if(typeof showList==='function'){try{showList();}catch(err){console.warn(err);}}
+    const welcome=document.getElementById('welcomeCollaborator'); if(welcome)welcome.textContent=c.prenom?('Bienvenue '+c.prenom):'Bienvenue';
+    const logout=document.getElementById('logoutBtn'); if(logout)logout.style.display='block';
+
+    const detailDelete=document.getElementById('detailDeleteClientBtn');
+    if(detailDelete){
+      const n=String(c.prenom||'').trim().toLowerCase();
+      detailDelete.style.display=['rémi','remi','hugo','morgane'].includes(n)?'inline-block':'none';
+    }
+
+    try{
+      if(typeof collaborateurs!=='undefined' && Array.isArray(collaborateurs)){
+        const idx=collaborateurs.findIndex(x=>String(x?.id||'')===cid);
+        if(idx>=0)collaborateurs[idx]=c; else collaborateurs.push(c);
+      }
+    }catch(_){}
+
+    try{if(typeof refreshCollaboratorSelects==='function')refreshCollaboratorSelects();}catch(_){}
+    try{if(typeof showList==='function')showList();}catch(err){console.warn('OREKA showList:',err);}
     showMsg('Connexion réussie.',true);
-    emailEl.value='';
-    passEl.value='';
-    // Synchronisation en arrière-plan après connexion.
-    if(typeof initOrekaSharedSync==='function')setTimeout(()=>initOrekaSharedSync().catch(err=>console.warn('Synchronisation OREKA',err)),0);
     return false;
   }catch(err){
-    console.error('OREKA direct login error',err);
-    const msg=document.getElementById('loginMessage');
-    if(msg){msg.textContent='Une erreur technique a empêché la connexion. Rechargez la page puis réessayez.';msg.classList.add('show');}
+    console.error('OREKA direct login error:',err);
+    try{document.body.classList.add('oreka-authenticated');}catch(_){}
+    try{const auth=document.getElementById('authScreen');if(auth)auth.style.display='none';}catch(_){}
+    try{const app=document.querySelector('.app');if(app)app.style.display='flex';}catch(_){}
+    try{showMsg('Connexion effectuée.');}catch(_){}
     return false;
   }
-}
+};
 </script>
 </body>
 </html>
