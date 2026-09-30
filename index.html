@@ -3019,26 +3019,26 @@ document.addEventListener('DOMContentLoaded',function(){
  </div>
 </div>
 <script>
-window.orekaDirectLogin = async function(e){
+window.orekaDirectLogin = function(e){
   try{
     if(e && e.preventDefault)e.preventDefault();
     const emailEl=document.getElementById('loginEmail');
     const passEl=document.getElementById('loginPassword');
     const msgEl=document.getElementById('loginMessage');
-    const showMsg=(msg)=>{
+    const showMsg=(msg,ok=false)=>{
       if(!msgEl)return;
       msgEl.textContent=msg;
       msgEl.classList.add('show');
-      msgEl.style.background='#fef3f2';
-      msgEl.style.color='#b42318';
+      msgEl.style.background=ok?'#effaf2':'#fef3f2';
+      msgEl.style.color=ok?'#16734b':'#b42318';
     };
     const email=String(emailEl?.value||'').trim().toLowerCase().normalize('NFKC').replace(/\s+/g,'');
     const password=String(passEl?.value||'');
     if(!email){showMsg('Saisissez votre adresse e-mail.');emailEl?.focus();return false;}
     if(!password){showMsg('Saisissez votre mot de passe.');passEl?.focus();return false;}
-    if(typeof initOrekaSharedSync==='function'){
-      try{await initOrekaSharedSync();}catch(err){console.warn('Synchronisation avant connexion',err);}
-    }
+
+    // La connexion ne doit plus attendre la synchronisation Supabase.
+    // On authentifie immédiatement puis la synchronisation continue en arrière-plan.
     let list=[];
     try{list=JSON.parse(localStorage.getItem('oreka_collaborateurs_v1')||'[]');if(!Array.isArray(list))list=[];}catch(err){list=[];}
     const known={
@@ -3056,10 +3056,22 @@ window.orekaDirectLogin = async function(e){
     }
     if(!c){showMsg('Adresse e-mail inconnue. Vérifiez l’adresse saisie.');return false;}
     const expected=String(c.password==null||c.password===''?'1234':c.password);
-    if(expected!==password){showMsg('Mot de passe incorrect.');passEl?.focus();return false;}
-    sessionStorage.setItem('oreka_session_collaborator_v1',String(c.id));
-    localStorage.setItem('oreka_active_collaborateur_v1',String(c.id));
-    window.location.replace(window.location.href.split('#')[0]+'?oreka='+Date.now());
+    if(expected!==password){showMsg('Mot de passe incorrect. Le mot de passe initial est 1234 si vous ne l’avez pas encore changé.');passEl?.focus();return false;}
+
+    // Ouverture immédiate de l'ERP sans rechargement de page.
+    sessionStorage.setItem(AUTH_SESSION_KEY,String(c.id));
+    activeCollaboratorId=String(c.id);
+    localStorage.setItem(ACTIVE_COLLAB_KEY,String(c.id));
+    document.body.classList.add('oreka-authenticated');
+    const auth=document.getElementById('authScreen'); if(auth)auth.style.display='none';
+    const app=document.querySelector('.app'); if(app)app.style.display='flex';
+    if(typeof updateAuthControls==='function'){try{updateAuthControls();}catch(err){console.warn(err);}}
+    if(typeof showList==='function'){try{showList();}catch(err){console.warn(err);}}
+    showMsg('Connexion réussie.',true);
+    emailEl.value='';
+    passEl.value='';
+    // Synchronisation en arrière-plan après connexion.
+    if(typeof initOrekaSharedSync==='function')setTimeout(()=>initOrekaSharedSync().catch(err=>console.warn('Synchronisation OREKA',err)),0);
     return false;
   }catch(err){
     console.error('OREKA direct login error',err);
@@ -3067,7 +3079,7 @@ window.orekaDirectLogin = async function(e){
     if(msg){msg.textContent='Une erreur technique a empêché la connexion. Rechargez la page puis réessayez.';msg.classList.add('show');}
     return false;
   }
-};
+}
 </script>
 </body>
 </html>
