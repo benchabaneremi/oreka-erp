@@ -3046,7 +3046,46 @@ window.orekaNavigate=function(view){
     return false;
   }catch(err){
     console.error('OREKA navigation error:',view,err);
-    alert('Une erreur empêche l’ouverture de cet onglet. Rechargez la page puis réessayez.');
+    // Secours : afficher l'onglet même si son rendu rencontre une erreur.
+    const viewMap={
+      prospects:'prospectView',
+      quotes:'quotesView',
+      agenda:'agendaView',
+      statistics:'statisticsView',
+      collaborateurs:'collaborateursView',
+      catalog:'catalogView',
+      contacts:'usefulContactsView'
+    };
+    const navMap={
+      prospects:'navProspects',
+      quotes:'navQuotes',
+      agenda:'navAgenda',
+      statistics:'navStatistics',
+      collaborateurs:'navCollaborateurs',
+      catalog:'navCatalog',
+      contacts:'navUsefulContacts'
+    };
+    Object.values(viewMap).forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+    const target=document.getElementById(viewMap[view]);
+    if(target){
+      document.getElementById('listView')?.style.setProperty('display','none');
+      document.getElementById('detailView')?.classList.remove('active');
+      target.style.display='block';
+      document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+      document.getElementById(navMap[view])?.classList.add('active');
+      try{
+        const renderers={
+          prospects:window.renderProspects,
+          quotes:window.renderQuotes,
+          agenda:window.renderAgenda,
+          statistics:window.renderStatistics,
+          collaborateurs:window.renderCollaborateurs,
+          catalog:window.renderCatalog,
+          contacts:window.renderUsefulContacts
+        };
+        if(typeof renderers[view]==='function')renderers[view]();
+      }catch(renderErr){console.error('OREKA rendu '+view,renderErr);}
+    }
     return false;
   }
 };
