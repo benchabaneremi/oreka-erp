@@ -150,10 +150,10 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div id="loginPanel">
       <h1>Connexion OREKA</h1>
       <p>Identifiez-vous avec votre adresse e-mail de collaborateur.</p>
-      <form onsubmit="return false" class="form">
+      <form onsubmit="return orekaDirectLogin(event)" class="form">
         <div class="field"><label>Adresse e-mail *</label><input id="loginEmail" type="email" autocomplete="username" required></div>
         <div class="field"><label>Mot de passe *</label><input id="loginPassword" type="text" autocomplete="current-password" required></div>
-        <button class="btn primary" type="button" onclick="login(event)" style="width:100%">Se connecter</button>
+        <button class="btn primary" type="button" onclick="return orekaDirectLogin(event)" style="width:100%">Se connecter</button>
       </form>
       <div class="auth-actions">
         <button class="btn secondary" type="button" onclick="showResetPanel()">Mot de passe oublié</button>
@@ -2984,7 +2984,7 @@ document.addEventListener('DOMContentLoaded',function(){
    loginForm.addEventListener('submit',function(e){
      e.preventDefault();
      e.stopImmediatePropagation();
-     try{window.login(e);}catch(err){console.error('OREKA login submit error',err);}
+     try{window.orekaDirectLogin(e);}catch(err){console.error('OREKA login submit error',err);}
    },true);
  }
  const siren=document.getElementById('pSiren');
