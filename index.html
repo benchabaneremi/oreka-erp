@@ -149,7 +149,7 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
     <div id="loginPanel">
       <h1>Connexion OREKA</h1>
       <p>Identifiez-vous avec votre adresse e-mail de collaborateur.</p>
-      <form onsubmit="return login(event)" class="form">
+      <form onsubmit="login(event); return false" class="form">
         <div class="field"><label>Adresse e-mail *</label><input id="loginEmail" type="email" autocomplete="username" required></div>
         <div class="field"><label>Mot de passe *</label><input id="loginPassword" type="text" autocomplete="current-password" required></div>
         <button class="btn primary" type="submit" style="width:100%">Se connecter</button>
@@ -2977,6 +2977,14 @@ void initOrekaSharedSync();
 
 <script>
 document.addEventListener('DOMContentLoaded',function(){
+ const loginForm=document.getElementById('loginPanel')?.querySelector('form');
+ if(loginForm){
+   loginForm.addEventListener('submit',function(e){
+     e.preventDefault();
+     e.stopImmediatePropagation();
+     try{window.login(e);}catch(err){console.error('OREKA login submit error',err);}
+   },true);
+ }
  const siren=document.getElementById('pSiren');
  if(siren)siren.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();lookupSiren();}});
  const clientSiren=document.getElementById('siren');
