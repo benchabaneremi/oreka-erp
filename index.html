@@ -153,7 +153,7 @@ body:not(.oreka-authenticated) .app{display:none} body.oreka-authenticated .auth
       <form onsubmit="return false" class="form">
         <div class="field"><label>Adresse e-mail *</label><input id="loginEmail" type="email" autocomplete="username" required></div>
         <div class="field"><label>Mot de passe *</label><input id="loginPassword" type="text" autocomplete="current-password" required></div>
-        <button class="btn primary" type="button" onclick="orekaDirectLogin(event)" style="width:100%">Se connecter</button>
+        <button class="btn primary" type="button" onclick="login(event)" style="width:100%">Se connecter</button>
       </form>
       <div class="auth-actions">
         <button class="btn secondary" type="button" onclick="showResetPanel()">Mot de passe oublié</button>
